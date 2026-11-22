@@ -4,6 +4,9 @@ const { BaseWindow, WebContentsView, nativeTheme, shell, clipboard, webContents 
 const path = require('path')
 const { toURL, isInternal, hostOf, searchURL } = require('./urls')
 
+// A view's webContents disappears once the window has closed
+const dead = (v) => !v || !v.webContents || v.webContents.isDestroyed()
+
 const UI_PRELOAD = path.join(__dirname, '../preload/ui.js')
 const PAGE_PRELOAD = path.join(__dirname, '../preload/page.js')
 const UI_HTML = path.join(__dirname, '../renderer/index.html')
@@ -57,7 +60,7 @@ class Browser {
           continue
         }
         // keep a web panel that's playing music
-        if (!v.webContents.isDestroyed() && v.webContents.isCurrentlyAudible()) continue
+        if (!dead(v) && v.webContents.isCurrentlyAudible()) continue
         if (now - since > panelMin * 60000) {
           this.destroyPanel(key)
           this.panelHiddenAt.delete(key)
@@ -131,6 +134,7 @@ class Browser {
       this.saveSession(true)
     })
     this.win.on('closed', () => {
+      clearTimeout(this.emitTimer) // a pending tab update would talk to a closed window
       this.win = null
       // WebContentsViews are not destroyed with their window; close them
       // explicitly or Electron aborts on shutdown.
@@ -140,9 +144,9 @@ class Browser {
           t.wc.close()
         }
       }
-      for (const v of this.panels.values()) if (!v.webContents.isDestroyed()) v.webContents.close()
-      if (this.popup && !this.popup.webContents.isDestroyed()) this.popup.webContents.close()
-      if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close()
+      for (const v of this.panels.values()) if (!dead(v)) v.webContents.close()
+      if (!dead(this.popup)) this.popup.webContents.close()
+      if (!dead(this.ui)) this.ui.webContents.close()
       clearInterval(this.janitor)
       require('electron').app.quit()
     })
@@ -158,7 +162,7 @@ class Browser {
 
   // ---------- events to UI + internal pages ----------
   emit(name, payload) {
-    if (this.ui && !this.ui.webContents.isDestroyed()) this.ui.webContents.send('wz:event', name, payload)
+    if (!dead(this.ui)) this.ui.webContents.send('wz:event', name, payload)
     for (const t of this.tabs.values()) {
       if (t.wc && !t.wc.isDestroyed() && isInternal(t.wc.getURL())) t.wc.send('wz:event', name, payload)
     }
@@ -415,7 +419,7 @@ class Browser {
 
   // Give the browser UI keyboard focus, then put the cursor in the address bar.
   focusAddress() {
-    if (!this.ui || this.ui.webContents.isDestroyed()) return
+    if (dead(this.ui)) return
     this.ui.webContents.focus()
     this.emit('focus-address')
   }
@@ -741,7 +745,7 @@ class Browser {
     // address bar mid-typing. Give focus straight back to the browser UI.
     this.popup.webContents.on('focus', () => {
       if (this.popupMode === 'form') return // the bookmark box needs the keyboard
-      if (this.ui && !this.ui.webContents.isDestroyed()) this.ui.webContents.focus()
+      if (!dead(this.ui)) this.ui.webContents.focus()
     })
     this.popupReady = new Promise((r) => this.popup.webContents.once('did-finish-load', r))
     this.win.contentView.addChildView(this.popup)
@@ -769,7 +773,7 @@ class Browser {
     // a form in the dropdown (the bookmark box) takes the keyboard instead
     if (this.popupMode === 'form') {
       return () => {
-        const give = () => this.popup && !this.popup.webContents.isDestroyed() && this.popup.webContents.focus()
+        const give = () => !dead(this.popup) && this.popup.webContents.focus()
         give()
         setTimeout(give, 30)
       }
@@ -778,10 +782,10 @@ class Browser {
     // address bar, clicking Downloads), so the UI should keep the keyboard.
     // (Checking isFocused() isn't enough: creating the view the first time
     // already steals focus before we get here.)
-    const had = this.ui && !this.ui.webContents.isDestroyed() && (this.ui.webContents.isFocused() || this.win.isFocused())
+    const had = !dead(this.ui) && (this.ui.webContents.isFocused() || this.win.isFocused())
     return () => {
       if (!had) return
-      const back = () => !this.ui.webContents.isDestroyed() && !this.ui.webContents.isFocused() && this.ui.webContents.focus()
+      const back = () => !dead(this.ui) && !this.ui.webContents.isFocused() && this.ui.webContents.focus()
       back()
       setImmediate(back)
       setTimeout(back, 30)

@@ -52,13 +52,20 @@ class AdBlock {
         const page = wc && !wc.isDestroyed() ? wc.getURL() : details.referrer || ''
         if (wc && !wc.isDestroyed() && this.allowed(page)) return cb({})
         if (exempt(details.url, page) || exempt(details.url, details.frame?.url || '')) return cb({})
-        return before(details, cb)
+        // Ghostery swaps some blocked requests for an empty data: URL instead
+        // of cancelling them. Redirecting to data: crashes this Electron
+        // (the whole browser goes down ~5 s into a YouTube video, which pings
+        // doubleclick). Cancel those requests instead.
+        return before(details, (r) => cb(r && r.redirectURL && r.redirectURL.startsWith('data:') ? { cancel: true } : r))
       }
-      const cosmetic = this.blocker.onInjectCosmeticFilters
-      this.blocker.onInjectCosmeticFilters = (event, url, msg) => {
-        if (this.allowed(url) || exempt(url, url)) return Promise.resolve()
-        return cosmetic(event, url, msg)
-      }
+      // Cosmetic filters + scriptlets. Ghostery's own version runs every
+      // frame's scripts in the *main page* (webContents.executeJavaScript), so
+      // pages that keep making iframes (YouTube, Shorts) got the same
+      // scriptlets stacked again and again — "already declared" / "maximum
+      // call stack" errors, broken players, and with extensions that add
+      // frames (Bitwarden) a crash of the whole browser. Inject into the frame
+      // that asked, once, and skip frames that are already gone.
+      this.blocker.onInjectCosmeticFilters = (event, url, msg) => this.injectCosmetics(event, url, msg)
       this.blocker.on('request-blocked', (req) => {
         this.total++
         const tab = [...(this.ctx.browser?.tabs.values() || [])].find((t) => t.wc && !t.wc.isDestroyed() && t.wc.id === req.tabId)
@@ -71,6 +78,44 @@ class AdBlock {
     } catch (e) {
       console.error('[adblock] failed to load filter lists:', e.message)
     }
+  }
+
+  async injectCosmetics(event, url, msg) {
+    try {
+      const frame = event.senderFrame
+      if (!frame || frame.detached || event.sender.isDestroyed()) return
+      const page = event.sender.getURL() || url
+      if (this.allowed(page) || exempt(url, page)) return
+      const { parse } = require('tldts-experimental')
+      const parsed = parse(url)
+      const first = msg === undefined // first call per document; later calls carry DOM info
+      const { active, styles, scripts } = this.blocker.getCosmeticsFilters({
+        domain: parsed.domain || '',
+        hostname: parsed.hostname || '',
+        url,
+        classes: msg?.classes,
+        hrefs: msg?.hrefs,
+        ids: msg?.ids,
+        getBaseRules: first,
+        getInjectionRules: first,
+        getExtendedRules: false,
+        getRulesFromHostname: first,
+        getRulesFromDOM: !first,
+        callerContext: { frameId: event.frameId, processId: event.processId, lifecycle: msg?.lifecycle },
+      })
+      if (active === false) return
+      const isTop = frame === frame.top
+      if (styles.length > 0) {
+        if (isTop) event.sender.insertCSS(styles, { cssOrigin: 'user' }).catch(() => {})
+        else frame.executeJavaScript(`(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(styles)}; (document.head || document.documentElement).appendChild(s) })()`).catch(() => {})
+      }
+      for (const script of scripts) {
+        if (frame.detached) return
+        // each scriptlet in its own block: several bundle the same helper
+        // (e.g. a JSONPath class) and would clash at the page's top level
+        frame.executeJavaScript(`{\n${script}\n}`, true).catch(() => {})
+      }
+    } catch {}
   }
 
   apply() {

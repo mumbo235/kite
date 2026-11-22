@@ -10,6 +10,9 @@
 const { app } = require('electron')
 const os = require('os')
 
+// A view's webContents disappears once the window has closed
+const dead = (v) => !v || !v.webContents || v.webContents.isDestroyed()
+
 const HISTORY = 60
 
 class Performance {
@@ -48,7 +51,7 @@ class Performance {
     const metrics = app.getAppMetrics()
     const byPid = this.tabsByPid()
     const panelPids = new Map()
-    for (const [key, v] of this.b?.panels || []) if (!v.webContents.isDestroyed()) panelPids.set(v.webContents.getOSProcessId(), key)
+    for (const [key, v] of this.b?.panels || []) if (!dead(v)) panelPids.set(v.webContents.getOSProcessId(), key)
     let cpu = 0
     let mem = 0
     const tabs = new Map() // tab id -> { cpu, mem }
