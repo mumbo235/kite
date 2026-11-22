@@ -10,7 +10,7 @@ function favHTML(t) {
   if (t.url.startsWith('kite://settings')) return icon('sliders')
   if (t.url.startsWith('kite://history')) return icon('history')
   if (t.url.startsWith('kite://extensions')) return icon('blocks')
-  if (t.url.startsWith('kite://')) return icon('zap')
+  if (t.url.startsWith('kite://')) return '<img src="kite://shared/kite-logo.svg" alt="">' // new tab & other Kite pages
   const cached = /^https?:/.test(t.url) ? 'kite://favicon/?u=' + encodeURIComponent(t.url) : ''
   if (t.favicon) return `<img src="${esc(t.favicon)}" data-fallback="${esc(cached)}" alt="">`
   if (cached) return `<img src="${esc(cached)}" alt="">`

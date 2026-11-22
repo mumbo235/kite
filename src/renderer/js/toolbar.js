@@ -194,7 +194,7 @@ export function updateToolbarState(force) {
   const internal = url.startsWith('kite://')
   if (!open) {
     site.className = 'site ' + (url.startsWith('http://') ? 'insecure' : 'secure')
-    setHTML(site, internal || !url ? icon(url && !url.startsWith('kite://newtab') ? 'zap' : 'search') : icon(url.startsWith('https://') ? 'lock' : 'unlock'))
+    setHTML(site, internal || !url ? icon(url && !url.startsWith('kite://newtab') ? 'kite' : 'search') : icon(url.startsWith('https://') ? 'lock' : 'unlock'))
   }
   site.title = url.startsWith('https://') ? 'Connection is secure' : url.startsWith('http://') ? 'Connection is not secure' : ''
 

@@ -60,7 +60,7 @@ const SECTIONS = [
   { id: 'extensions', title: 'Extensions', icon: 'blocks', desc: 'Chrome extensions.', render: extensions },
   { id: 'import', title: 'Import & export', icon: 'download', desc: 'Bring your bookmarks and history from another browser.', render: importSection },
   { id: 'profiles', title: 'Profiles', icon: 'layers', desc: 'Separate logins, history and settings.', render: profiles },
-  { id: 'about', title: 'About & backup', icon: 'zap', desc: 'Versions, data folder, import/export.', render: about },
+  { id: 'about', title: 'About & backup', icon: 'kite', desc: 'Versions, data folder, import/export.', render: about },
 ]
 
 let current = (location.hash || '#appearance').slice(1)
