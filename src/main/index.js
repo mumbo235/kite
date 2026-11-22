@@ -200,6 +200,7 @@ app.whenReady().then(async () => {
 
   ctx.history = new History(ctx.data)
   ctx.menus = new Menus(ctx)
+  ctx.menuView = new (require('./menuview').MenuView)(ctx)
   ctx.actions = defineActions(ctx)
   ctx.shortcuts = new Shortcuts(ctx)
   ctx.downloads = new Downloads(ctx)

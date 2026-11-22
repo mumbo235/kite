@@ -101,6 +101,7 @@ class Browser {
     this.win.contentView.addChildView(this.ui)
     this.ui.webContents.loadFile(UI_HTML)
     this.ui.webContents.on('before-input-event', (e, input) => this.ctx.shortcuts.handle(e, input))
+    this.ui.webContents.on('context-menu', (_e, params) => this.ctx.menus.ui(params))
     this.ui.webContents.once('did-finish-load', () => {
       this.win.show()
       if (this.ctx.dev) this.ui.webContents.openDevTools({ mode: 'detach' })
@@ -113,7 +114,10 @@ class Browser {
     }
     fit()
     this.win.on('resize', fit)
-    this.win.on('resize', () => this.hidePopup())
+    this.win.on('resize', () => {
+      this.hidePopup()
+      this.ctx.menuView?.hide()
+    })
     this.win.on('blur', () => {
       this.dismissDropdown()
       this.hidePopup()

@@ -487,7 +487,7 @@ function rowIcon(s) {
 export function cssVars() {
   const cs = getComputedStyle(document.documentElement)
   const out = {}
-  for (const k of ['--bg', '--surface', '--surface-2', '--surface-3', '--text', '--muted', '--border', '--accent', '--accent-text', '--accent-soft', '--radius', '--font', '--fs', '--speed', '--shadow']) {
+  for (const k of ['--bg', '--surface', '--surface-2', '--surface-3', '--text', '--muted', '--border', '--accent', '--accent-text', '--accent-soft', '--danger', '--radius', '--radius-sm', '--radius-lg', '--font', '--fs', '--speed', '--shadow']) {
     const v = cs.getPropertyValue(k)
     if (v) out[k] = v.trim()
   }

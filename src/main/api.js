@@ -122,6 +122,9 @@ function registerApi(ctx) {
 
     // menus
     'menu.app': (x, y) => ctx.menus.app(x, y),
+    'menu.theme': (vars) => {
+      if (ctx.menuView && vars && typeof vars === 'object') ctx.menuView.vars = vars
+    },
     'menu.bookmarks': (list, x, y) => ctx.menus.bookmarks(list || [], x, y),
     'menu.bookmark': (id, x, y) => ctx.menus.bookmark(id, x, y),
     'menu.extension': (id, x, y) => ctx.menus.extension(id, x, y),

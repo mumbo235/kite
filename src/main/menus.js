@@ -17,8 +17,30 @@ class Menus {
     return m
   }
 
-  popup(menu, x, y) {
+  // Shown in Kite's own menu layer (themed), not the system's menus.
+  // `target` is the page the menu is about (copy/paste roles act on it).
+  popup(menu, x, y, target) {
+    if (this.ctx.menuView) return this.ctx.menuView.show(menu, x, y, target)
     menu.popup({ window: this.b.win, x: Math.round(x), y: Math.round(y) })
+  }
+
+  // Right-click in the browser's own text fields (address bar, find bar...)
+  ui(params) {
+    if (!params.isEditable && !(params.selectionText || '').trim()) return
+    const wc = this.b.ui.webContents
+    const items = params.isEditable
+      ? [
+          { label: 'Undo', enabled: params.editFlags?.canUndo !== false, click: () => wc.undo() },
+          { label: 'Redo', enabled: params.editFlags?.canRedo !== false, click: () => wc.redo() },
+          { type: 'separator' },
+          { label: 'Cut', accelerator: 'Ctrl+X', enabled: params.editFlags?.canCut !== false, click: () => wc.cut() },
+          { label: 'Copy', accelerator: 'Ctrl+C', enabled: params.editFlags?.canCopy !== false, click: () => wc.copy() },
+          { label: 'Paste', accelerator: 'Ctrl+V', enabled: params.editFlags?.canPaste !== false, click: () => wc.paste() },
+          { type: 'separator' },
+          { label: 'Select all', accelerator: 'Ctrl+A', click: () => wc.selectAll() },
+        ]
+      : [{ label: 'Copy', accelerator: 'Ctrl+C', click: () => wc.copy() }]
+    this.popup(this.build(items), params.x, params.y, wc)
   }
 
   // params is Electron's ContextMenuParams, or a compatible object built by
@@ -101,7 +123,7 @@ class Menus {
     const z = wc.getZoomFactor()
     const x = params.clientX != null ? bounds.x + params.clientX * z : bounds.x + params.x
     const y = params.clientY != null ? bounds.y + params.clientY * z : bounds.y + params.y
-    this.popup(this.build(items), x, y)
+    this.popup(this.build(items), x, y, wc)
   }
 
   panel(view, params) {
@@ -113,7 +135,7 @@ class Menus {
     else if (params.selectionText) items.push({ label: 'Copy', click: () => wc.copy() })
     items.push({ type: 'separator' }, { label: 'Reload panel', click: () => wc.reload() }, { label: 'Open in a tab', click: () => b.newTab(wc.getURL()) }, { label: 'Inspect', click: () => wc.inspectElement(params.x, params.y) })
     const pb = b.panelBounds || { x: 0, y: 0 }
-    this.popup(this.build(items), pb.x + params.x, pb.y + params.y)
+    this.popup(this.build(items), pb.x + params.x, pb.y + params.y, wc)
   }
 
   tab(id, x, y) {

@@ -2,7 +2,7 @@
 import { applyTheme, onSystemThemeChange } from './theme.js'
 import { icon } from './icons.js'
 import { renderTabs, fixBrokenFavicons } from './tabs.js'
-import { renderToolbar, focusAddress, updateToolbarState, refreshDownloadsDropdown } from './toolbar.js'
+import { renderToolbar, focusAddress, updateToolbarState, refreshDownloadsDropdown, cssVars } from './toolbar.js'
 import { renderSidebar, setupResizers, setupAutoHide } from './sidebar.js'
 import { openPalette, toast, prompt } from './overlay.js'
 import { renderPanel, openTool, closeTool } from './panels.js'
@@ -360,6 +360,16 @@ api.on('new-workspace', () => newWorkspace())
 // system dark mode flips and the once-a-minute schedule check only repaint
 // colors (a full re-render would rebuild the toolbar)
 onSystemThemeChange(() => S.settings && applyTheme(S.settings, S.themes, undefined, themeExtra()))
+
+// Kite's menus are drawn in their own layer: give it the current theme
+// colors whenever they change (theme, accent, schedule, workspace tint...)
+let menuThemeTimer = null
+const pushMenuTheme = () => {
+  clearTimeout(menuThemeTimer)
+  menuThemeTimer = setTimeout(() => api.call('menu.theme', cssVars()).catch(() => {}), 50)
+}
+new MutationObserver(pushMenuTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'class'] })
+pushMenuTheme()
 
 export async function addWebPanel() {
   const r = await prompt({
