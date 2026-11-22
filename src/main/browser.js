@@ -604,7 +604,10 @@ class Browser {
     const wc = this.active()?.wc
     if (!wc) return
     if (!text) return wc.stopFindInPage('clearSelection')
-    wc.findInPage(text, { forward: opts.forward !== false, findNext: !!opts.findNext, matchCase: !!opts.matchCase })
+    // Electron's findNext means "start a new search" (true) vs "go to the
+    // next match of the current one" (false) — the opposite of Kite's
+    // opts.findNext ("jump to the next match")
+    wc.findInPage(text, { forward: opts.forward !== false, findNext: !opts.findNext, matchCase: !!opts.matchCase })
   }
 
   stopFind() {
@@ -794,7 +797,7 @@ class Browser {
 
   // The downloads dropdown closes when you click into a page or panel.
   dismissDropdown() {
-    if (this.popupRect && this.popupMode === 'downloads') {
+    if (this.popupRect && this.popupMode !== 'suggest') {
       this.hidePopup()
       this.emit('popup-closed')
     }

@@ -1,3 +1,10 @@
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+}
+html:has(body.on-light) {
+  scrollbar-color: rgb(0 0 0 / 0.25) transparent;
+}
 body {
   margin: 0;
   background: var(--surface);
@@ -570,10 +577,12 @@ body.has-widgets main {
 }
 .widgets {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  /* cards keep a sensible width: one widget doesn't stretch across the page */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 330px));
+  justify-content: center;
   align-items: start;
   gap: 14px;
-  width: min(960px, calc(100vw - 48px));
+  width: min(1040px, calc(100vw - 48px));
   margin-top: 6px;
   user-select: text;
 }
@@ -1211,4 +1220,18 @@ body:not(.has-bg) .feed-empty {
 .feed-off .icon {
   width: 14px;
   height: 14px;
+}
+/* With widgets the page reaches the bottom corners: the photo credit gets a
+   frosted backing so it stays readable over cards (it hides as you scroll) */
+body.has-widgets .credit {
+  z-index: 3;
+  max-width: min(45vw, 420px);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(10px);
+  text-shadow: none;
+}
+.corner {
+  z-index: 3;
 }

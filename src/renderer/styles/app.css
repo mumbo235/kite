@@ -235,8 +235,8 @@ body {
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-  mask-image: linear-gradient(90deg, #000 85%, transparent);
+  text-overflow: clip; /* the title fades out instead of ending in "…" */
+  mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent);
 }
 .tab.sleeping .title,
 .tab.sleeping .fav,
@@ -250,6 +250,22 @@ body {
 .tab:hover .close,
 .tab.active .close {
   opacity: 1;
+}
+/* On background tabs the close button floats over the end of the title, so
+   titles use the whole tab instead of stopping short of an invisible button */
+.tab:not(.active) .close {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tab:not(.active):hover .title {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 46px), transparent calc(100% - 26px));
+}
+.close-always .tab:not(.active) .close {
+  position: static;
+  transform: none;
+  background: none;
 }
 .tab .audio {
   color: var(--muted);
@@ -1087,6 +1103,9 @@ browser-action-list::part(action):hover {
 }
 #findbar input.input {
   width: 260px;
+}
+#findbar .count:empty {
+  display: none;
 }
 #findbar .count {
   min-width: 60px;

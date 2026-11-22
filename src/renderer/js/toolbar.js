@@ -255,6 +255,7 @@ export function updateToolbarState(force) {
     btn('shield').classList.toggle('shield-off', !on)
     setHTML(btn('shield').querySelector('svg') ? btn('shield') : btn('shield'), icon(on ? 'shieldCheck' : 'shield'), 'ic')
     setBadge(btn('shield'), on && t?.blocked ? (t.blocked > 99 ? '99+' : String(t.blocked)) : '')
+    if (shOpen && !shTimer) shTimer = setTimeout(() => ((shTimer = null), refreshShield()), 500)
     btn('shield').title = on ? `${t?.blocked || 0} ads & trackers blocked on this page` : 'Ad blocker off for this site'
   }
   if (btn('downloads')) {
@@ -339,36 +340,98 @@ function isAllowlisted(url) {
   }
 }
 
-async function shieldMenu(el) {
+// ---------- shields dropdown (floating layer: the page keeps running) ----------
+let shOpen = false
+let shAnchor = null
+let shStats = { total: 0, ready: true }
+let shTimer = null
+
+const SH_CSS = `<style>
+  .sh-head { display: flex; align-items: center; gap: 10px; padding: 8px 8px 10px; }
+  .sh-badge { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+  .sh-badge.off { background: var(--surface-2); color: var(--muted); }
+  .sh-badge .icon { width: 18px; height: 18px; }
+  .sh-title { flex: 1; min-width: 0; }
+  .sh-title b { display: block; font-size: 13.5px; font-weight: 600; }
+  .sh-title span { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sh-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 2px 8px; }
+  .sh-stat { padding: 9px 10px; border-radius: var(--radius-sm); background: var(--surface-2); }
+  .sh-stat b { display: block; font-size: 20px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .sh-stat span { font-size: 11.5px; color: var(--muted); }
+  .sh-row { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 4px 8px; border-radius: var(--radius-sm); font-size: 13px; cursor: default; }
+  .sh-row:hover { background: var(--surface-2); }
+  .sh-row.dis { opacity: 0.5; pointer-events: none; }
+  .sh-row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sh-row small { display: block; font-size: 11.5px; color: var(--muted); }
+  .sh-row .switch { pointer-events: none; }
+  .sh-foot { display: flex; padding: 6px 2px 2px; margin-top: 4px; border-top: 1px solid var(--border); }
+  .sh-link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; padding: 4px 6px; border-radius: 6px; }
+  .sh-link:hover { background: var(--accent-soft); }
+</style>`
+
+function shieldHTML() {
   const t = activeTab()
   let host = ''
   try {
-    host = new URL(t.url).hostname.replace(/^www\./, '')
+    if (/^https?:/.test(t?.url || '')) host = new URL(t.url).hostname.replace(/^www\./, '')
   } catch {}
+  const on = !!S.settings.adblock
   const allowed = isAllowlisted(t?.url)
-  const stats = await api.call('adblock.stats')
-  setOverlay(true)
-  const r = el.getBoundingClientRect()
-  const ov = $('#overlay')
-  ov.innerHTML = ''
-  const bd = h('<div class="backdrop clear"></div>')
-  const pop = h(`<div class="popover dialog" style="left:auto;transform:none;top:${r.bottom + 6}px;right:${Math.max(8, innerWidth - r.right)}px;width:300px">
-      <h3>${icon('shieldCheck')} Shields</h3>
-      <div class="muted">${S.settings.adblock ? `${t?.blocked || 0} blocked on this page · ${stats.total} this session` : 'Ad blocker is turned off'}${stats.ready ? '' : ' · loading filter lists…'}</div>
-      ${host ? `<label style="flex-direction:row;align-items:center;justify-content:space-between;color:var(--text)">Block on ${esc(host)}<input type="checkbox" class="switch" data-k="site" ${allowed ? '' : 'checked'} ${S.settings.adblock ? '' : 'disabled'}></label>` : ''}
-      <label style="flex-direction:row;align-items:center;justify-content:space-between;color:var(--text)">Ad blocker (all sites)<input type="checkbox" class="switch" data-k="all" ${S.settings.adblock ? 'checked' : ''}></label>
-    </div>`)
-  const close = () => setOverlay(false)
-  bd.onclick = close
-  pop.querySelector('[data-k="site"]')?.addEventListener('change', () => api.call('adblock.toggleSite').then(close))
-  pop.querySelector('[data-k="all"]').addEventListener('change', (e) => api.call('settings.set', { adblock: e.target.checked }).then(close))
-  ov.append(bd, pop)
-  document.addEventListener('keydown', function onKey(e) {
-    if (e.key === 'Escape') {
-      document.removeEventListener('keydown', onKey)
-      if (document.body.classList.contains('overlay')) close()
-    }
+  const active = on && host && !allowed
+  const sub = !on ? 'Ad blocker is off' : !host ? 'Nothing to block on this page' : allowed ? `Off for ${host}` : `Protecting you on ${host}`
+  return `${SH_CSS}<div class="sh-head"><span class="sh-badge ${active ? '' : 'off'}">${icon(active ? 'shieldCheck' : 'shield')}</span>
+      <div class="sh-title"><b>Shields</b><span>${esc(sub)}</span></div></div>
+    <div class="sh-stats"><div class="sh-stat"><b>${active ? t?.blocked || 0 : 0}</b><span>blocked here</span></div><div class="sh-stat"><b>${shStats.total || 0}</b><span>this session${shStats.ready ? '' : ' · loading lists…'}</span></div></div>
+    ${host ? `<div class="sh-row ${on ? '' : 'dis'}" data-act="shield:site"><span>Block ads on ${esc(host)}<small>Turning this off reloads the page</small></span><input type="checkbox" class="switch" tabindex="-1" ${allowed ? '' : 'checked'}></div>` : ''}
+    <div class="sh-row" data-act="shield:all"><span>Ad blocker on all sites</span><input type="checkbox" class="switch" tabindex="-1" ${on ? 'checked' : ''}></div>
+    <div class="sh-foot"><button class="sh-link" data-act="shield:settings">Privacy settings</button></div>`
+}
+
+function drawShield(fresh) {
+  if (!shAnchor?.isConnected) shAnchor = $('#toolbar [data-tb="shield"]')
+  if (!shAnchor) return
+  const r = shAnchor.getBoundingClientRect()
+  const pad = 14
+  const width = 300
+  const x = Math.max(0, Math.round(r.right + 4 - width - pad))
+  api.call('popup.show', { x, y: r.bottom + 2, width: width + pad * 2, maxHeight: Math.round(innerHeight * 0.8) }, shieldHTML(), cssVars(), fresh, 'shield')
+}
+
+async function shieldMenu(el) {
+  if (shOpen) return closeShield()
+  if (open) closeSuggestions()
+  if (dlOpen) closeDownloads()
+  shAnchor = el
+  shOpen = true
+  el.classList.add('on')
+  shStats = await api.call('adblock.stats').catch(() => shStats)
+  if (shOpen) drawShield(true)
+}
+
+function closeShield() {
+  if (!shOpen) return
+  shOpen = false
+  shAnchor?.classList.remove('on')
+  api.call('popup.hide')
+}
+
+// keep the numbers live while it's open
+export function refreshShield() {
+  if (!shOpen) return
+  api.call('adblock.stats').then((st) => {
+    shStats = st
+    if (shOpen) drawShield(false)
   })
+}
+
+async function shieldAction(what) {
+  if (what === 'settings') {
+    closeShield()
+    return api.call('nav.go', 'kite://settings#privacy')
+  }
+  if (what === 'site') await api.call('adblock.toggleSite')
+  if (what === 'all') await api.call('settings.set', { adblock: !S.settings.adblock })
+  setTimeout(refreshShield, 60) // settings arrive first, then redraw
 }
 
 // ---------- suggestions (drawn in a floating popup layer above the page) ----------
@@ -459,7 +522,7 @@ function drawSuggestions(fresh) {
 }
 
 window.kite.on('popup-pick', ({ index, newTab }) => {
-  if (typeof index === 'string') return downloadAction(index)
+  if (typeof index === 'string') return index.startsWith('shield:') ? shieldAction(index.slice(7)) : downloadAction(index)
   const s = suggestions[index]
   if (!s) return
   if (s.type === 'go') go(s.url, newTab)
@@ -563,6 +626,7 @@ function drawDownloads(fresh) {
 function toggleDownloads(btn) {
   if (dlOpen) return closeDownloads()
   if (open) closeSuggestions()
+  if (shOpen) closeShield()
   dlAnchor = btn
   dlOpen = true
   btn.classList.add('on')
@@ -598,11 +662,15 @@ function downloadAction(act) {
 window.kite.on('popup-closed', () => {
   dlOpen = false
   dlAnchor?.classList.remove('on')
+  shOpen = false
+  shAnchor?.classList.remove('on')
 })
-// clicking anywhere else in the browser UI, or Escape, closes it
+// clicking anywhere else in the browser UI, or Escape, closes them
 document.addEventListener('mousedown', (e) => {
   if (dlOpen && !e.target.closest('[data-tb="downloads"]')) closeDownloads()
+  if (shOpen && !e.target.closest('[data-tb="shield"]')) closeShield()
 })
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && dlOpen) closeDownloads()
+  if (e.key === 'Escape' && shOpen) closeShield()
 })
