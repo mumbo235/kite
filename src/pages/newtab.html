@@ -10,6 +10,7 @@
     <div class="bg" id="bg"></div>
     <div class="bg-shade" id="shade"></div>
 
+    <div class="hero" id="hero">
     <main id="main">
       <div class="head">
         <div class="brand" id="brand"><img src="kite://shared/kite-logo.svg" alt="" /><span>Kite</span></div>
@@ -24,6 +25,14 @@
       <div class="tiles" id="tiles"></div>
       <div class="widgets" id="widgets"></div>
     </main>
+    <button class="feed-hint" id="feed-hint" hidden></button>
+    </div>
+
+    <section class="feed" id="feed" hidden>
+      <div class="feed-bar"><div class="feed-topics" id="feed-topics"></div><button class="icon-btn" id="feed-refresh" title="Refresh"></button></div>
+      <div class="feed-grid" id="feed-grid"></div>
+      <div class="feed-more" id="feed-more"></div>
+    </section>
 
     <a class="credit" id="credit" target="_blank"></a>
     <div class="corner">
@@ -48,6 +57,7 @@
         <label class="tog">Clock <input type="checkbox" class="switch" data-show="showClock" /></label>
         <label class="tog">Search box <input type="checkbox" class="switch" data-show="showSearch" /></label>
         <label class="tog">Shortcuts <input type="checkbox" class="switch" data-show="showShortcuts" /></label>
+        <label class="tog">News feed <input type="checkbox" class="switch" data-show="showNews" /></label>
         <div class="tog">Clock style <div class="seg mini" id="clock-kind"></div></div>
         <h3>Widgets</h3>
         <div id="widget-toggles"></div>

@@ -1,4 +1,4 @@
-// New tab widgets: weather, calendar, news, to-do, notes and a daily quote.
+// New tab widgets: weather, calendar, to-do, notes and a daily quote.
 // Each widget renders into its own card and only redraws the parts whose
 // data changed, so typing in Notes or To-do never loses focus when settings
 // update.
@@ -8,7 +8,6 @@ import { icon } from 'kite://ui/js/icons.js'
 export const WIDGETS = {
   weather: 'Weather',
   calendar: 'Calendar',
-  news: 'News',
   todo: 'To-do',
   notes: 'Notes',
   quote: 'Quote of the day',
@@ -31,7 +30,7 @@ export function setupWidgets(el, getSettings, saveNewtab) {
   host.addEventListener('submit', onSubmit)
   host.addEventListener('input', onInput)
   host.addEventListener('keydown', onKeydown)
-  // the calendar and quote move on at midnight; weather/news refresh hourly
+  // the calendar and quote move on at midnight; the weather refreshes every half hour
   setInterval(() => {
     const day = new Date().toDateString()
     if (day !== state.day) {
@@ -41,7 +40,7 @@ export function setupWidgets(el, getSettings, saveNewtab) {
     }
   }, 60000)
   setInterval(() => {
-    state.wxKey = state.newsKey = ''
+    state.wxKey = ''
     renderWidgets()
   }, 30 * 60000)
 }
@@ -57,7 +56,7 @@ export function renderWidgets() {
   if (key !== shownKey) {
     shownKey = key
     host.innerHTML = order.map((k, i) => `<section class="widget w-${k}" data-w="${k}" style="animation-delay:${i * 40}ms"></section>`).join('')
-    state.wxKey = state.newsKey = state.todoKey = state.calKey = state.quoteKey = ''
+    state.wxKey = state.todoKey = state.calKey = state.quoteKey = ''
     state.notesShown = false
   }
   host.style.display = order.length ? '' : 'none'
@@ -201,55 +200,6 @@ draw.calendar = (force) => {
     <div class="cal-grid">${names.map((x) => `<b>${x}</b>`).join('')}${cells}</div>`
 }
 
-// ---------- news ----------
-const FEEDS = [
-  ['bbc', 'BBC News'],
-  ['bbcworld', 'BBC World'],
-  ['npr', 'NPR'],
-  ['guardian', 'The Guardian'],
-  ['hn', 'Hacker News'],
-  ['verge', 'The Verge'],
-  ['ars', 'Ars Technica'],
-  ['espn', 'ESPN'],
-  ['custom', 'Your own feed…'],
-]
-function ago(t) {
-  if (!t) return ''
-  const m = Math.round((Date.now() - t) / 60000)
-  if (m < 1) return 'now'
-  if (m < 60) return m + 'm'
-  if (m < 48 * 60) return Math.round(m / 60) + 'h'
-  return Math.round(m / 1440) + 'd'
-}
-draw.news = async () => {
-  const el = card('news')
-  const cfg = { feed: 'bbc', url: '', count: 6, ...(nt().news || {}) }
-  const key = `${cfg.feed}|${cfg.url}|${cfg.count}`
-  if (state.newsKey === key) return
-  state.newsKey = key
-  const picker = `<select class="w-select" data-set="news.feed" title="News source">${FEEDS.map(([id, name]) => `<option value="${id}" ${cfg.feed === id ? 'selected' : ''}>${name}</option>`).join('')}</select>`
-  const head = `<div class="w-head"><span>News</span>${picker}</div>`
-  const urlForm = cfg.feed === 'custom' ? `<form class="w-form" data-form="news-url"><input class="input" name="url" placeholder="https://example.com/feed.xml" value="${esc(cfg.url)}" spellcheck="false"><button class="btn">Use</button></form>` : ''
-  if (cfg.feed === 'custom' && !cfg.url) {
-    el.innerHTML = head + urlForm + '<div class="w-empty">Paste the address of any RSS or Atom feed.</div>'
-    return
-  }
-  el.innerHTML = head + urlForm + '<div class="w-loading">Loading headlines…</div>'
-  try {
-    const d = await api.call('widgets.news', { feed: cfg.feed, url: cfg.url, count: cfg.count })
-    if (state.newsKey !== key) return
-    el.innerHTML =
-      head +
-      urlForm +
-      (d.items.length
-        ? `<div class="news-list">${d.items.map((x) => `<a class="news-item" href="${esc(x.link)}"><span>${esc(x.title)}</span><time>${ago(x.date)}</time></a>`).join('')}</div>`
-        : '<div class="w-empty">No headlines in this feed.</div>')
-  } catch {
-    if (state.newsKey !== key) return
-    el.innerHTML = head + urlForm + `<div class="w-empty">Couldn’t load the news. <button class="w-link" data-act="news-retry">Try again</button></div>`
-  }
-}
-
 // ---------- to-do ----------
 draw.todo = () => {
   const el = card('todo')
@@ -359,9 +309,6 @@ async function onClick(e) {
   } else if (act === 'cal-prev' || act === 'cal-next' || act === 'cal-today') {
     calOffset = act === 'cal-today' ? 0 : calOffset + (act === 'cal-prev' ? -1 : 1)
     draw.calendar()
-  } else if (act === 'news-retry') {
-    state.newsKey = ''
-    draw.news()
   } else if (act === 'todo-rm') {
     setNt({ todos: (n.todos || []).filter((_, i) => i !== +b.dataset.i) })
   } else if (act === 'todo-clear') {
@@ -378,8 +325,6 @@ function onChange(e) {
   if (t.dataset.todo != null) {
     const todos = (n.todos || []).map((x, i) => (i === +t.dataset.todo ? { ...x, done: t.checked } : x))
     setNt({ todos })
-  } else if (t.dataset.set === 'news.feed') {
-    setNt({ news: { ...(n.news || {}), feed: t.value } })
   }
 }
 
@@ -411,10 +356,6 @@ async function onSubmit(e) {
     if (!text) return
     f.reset()
     setNt({ todos: [...(n.todos || []), { text, done: false }] })
-  } else if (f.dataset.form === 'news-url') {
-    let url = val('url')
-    if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url
-    setNt({ news: { ...(n.news || {}), url } })
   }
 }
 

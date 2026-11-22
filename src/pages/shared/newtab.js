@@ -2,6 +2,7 @@
 import { init, api, $, esc, onSettings } from 'kite://shared/page.js'
 import { icon } from 'kite://ui/js/icons.js'
 import { WIDGETS, setupWidgets, renderWidgets } from 'kite://shared/widgets.js'
+import { setupFeed, renderFeed } from 'kite://shared/feed.js'
 
 // Gradient presets. `light: true` means dark text reads better on top.
 export const GRADIENTS = {
@@ -188,6 +189,7 @@ function render() {
   $('#clock').dataset.style = n.clockStyle || 'thin'
   tick()
   renderWidgets()
+  renderFeed()
   $('#q').placeholder = `Search ${(engines[s.searchEngine] || engines.google).name} or type a URL`
   $('#tiles').innerHTML =
     n.shortcuts
@@ -425,6 +427,14 @@ setupWidgets(
     // widgets save their own data; redraw only the widgets, not the page
     s = { ...s, newtab: { ...s.newtab, ...patch } }
     renderWidgets()
+    return api.call('settings.set', { newtab: s.newtab })
+  }
+)
+setupFeed(
+  () => s,
+  (patch) => {
+    s = { ...s, newtab: { ...s.newtab, ...patch } }
+    renderFeed()
     return api.call('settings.set', { newtab: s.newtab })
   }
 )

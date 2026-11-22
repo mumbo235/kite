@@ -218,8 +218,9 @@ function registerApi(ctx) {
     'bg.removeCustom': (file) => ctx.backgrounds.removeCustom(file),
     'widgets.weather': (opts) => require('./widgets').weather(opts),
     'widgets.findPlace': (q) => require('./widgets').findPlace(q),
-    'widgets.news': (opts) => require('./widgets').news(opts),
-    'widgets.feeds': () => require('./widgets').feeds(),
+    'widgets.feed': (opts) => require('./widgets').feed(opts),
+    'widgets.topics': () => require('./widgets').topics(),
+    'widgets.ogImages': (links) => require('./widgets').ogImages(links),
 
     'app.info': () => ({
       version: app.getVersion(),

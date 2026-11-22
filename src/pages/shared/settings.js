@@ -465,13 +465,16 @@ function newtab() {
         row('Shortcuts', 'Edit them directly on the new tab page.', toggle('newtab.showShortcuts'))
     ) +
     group(
+      'News feed',
+      row('Show news', 'Scroll down on the new tab page for stories with pictures from BBC, NPR, The Guardian and more.', toggle('newtab.showNews')) +
+        row('Topic', 'You can also switch topics above the stories.', select('newtab.news.topic', [['top', 'Top stories'], ['world', 'World'], ['business', 'Business'], ['tech', 'Technology'], ['science', 'Science'], ['sports', 'Sports'], ['entertainment', 'Entertainment'], ['hn', 'Hacker News'], ['custom', 'Your own feed']])) +
+        row('Your own feed', 'Address of any RSS or Atom feed. Pick “Your own feed” as the topic to use it.', text('newtab.news.url', 'https://example.com/feed.xml'))
+    ) +
+    group(
       'Widgets',
       row('Weather', 'Pick your city on the new tab page. Forecasts come from Open-Meteo; only the place you pick is sent.', toggle('newtab.widgets.weather')) +
         row('Temperature', '', seg('newtab.weather.units', [['auto', 'Automatic'], ['c', '°C'], ['f', '°F']])) +
         row('Calendar', 'This month at a glance.', toggle('newtab.widgets.calendar')) +
-        row('News', 'Headlines from a news site’s feed.', toggle('newtab.widgets.news')) +
-        row('News source', 'Pick “Your own feed” to paste any RSS or Atom feed on the new tab page.', select('newtab.news.feed', [['bbc', 'BBC News'], ['bbcworld', 'BBC World'], ['npr', 'NPR'], ['guardian', 'The Guardian'], ['hn', 'Hacker News'], ['verge', 'The Verge'], ['ars', 'Ars Technica'], ['espn', 'ESPN'], ['custom', 'Your own feed']])) +
-        row('Headlines', '', select('newtab.news.count', [3, 4, 5, 6, 8, 10].map((n) => [n, String(n)]))) +
         row('To-do list', '', toggle('newtab.widgets.todo')) +
         row('Notes', 'A scratchpad that saves as you type.', toggle('newtab.widgets.notes')) +
         row('Quote of the day', '', toggle('newtab.widgets.quote'))

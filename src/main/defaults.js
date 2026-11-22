@@ -142,10 +142,12 @@ const SETTINGS_DEFAULTS = {
     showShortcuts: true,
     greeting: '',
     // Widgets shown below the shortcuts, in this order
-    widgets: { weather: false, news: false, calendar: false, notes: false, todo: false, quote: false },
-    widgetOrder: ['weather', 'calendar', 'news', 'todo', 'notes', 'quote'],
+    widgets: { weather: false, calendar: false, notes: false, todo: false, quote: false },
+    widgetOrder: ['weather', 'calendar', 'todo', 'notes', 'quote'],
     weather: { place: null, units: 'auto' }, // place: { name, region, country, lat, lon }; units: auto | c | f
-    news: { feed: 'bbc', url: '', count: 6 },
+    // News feed below the page: scroll down for stories with pictures
+    showNews: true,
+    news: { topic: 'top', url: '' }, // topic: top | world | business | tech | science | sports | entertainment | hn | custom (url)
     notes: '',
     todos: [], // [{ text, done }]
     shortcuts: [
