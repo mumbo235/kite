@@ -1,8 +1,8 @@
 // Bookmarks bar under the toolbar: shows the "Bookmarks bar" folder.
-import { S, api, $, h, esc, activeTab } from './main.js'
+import { S, api, $, h, esc, activeTab, setOverlay } from './main.js'
 import { icon } from './icons.js'
 import { fixBrokenFavicons } from './tabs.js'
-import { prompt } from './overlay.js'
+import { prompt, toast } from './overlay.js'
 
 const favOf = (url) => {
   try {
@@ -183,21 +183,102 @@ function wire(bar) {
   }
 }
 
-export async function editBookmark(id) {
+export function editBookmark(id) {
   const b = S.bookmarks.find((x) => x.id === id)
-  if (!b) return
-  const r = await prompt({
-    title: 'Edit bookmark',
-    fields: [
-      { name: 'title', label: 'Name', value: b.title },
-      { name: 'url', label: 'URL', value: b.url },
-      { name: 'folder', label: 'Folder (use “Bookmarks bar” to show it on the bar)', value: b.folder || 'Other' },
-    ],
-    ok: 'Save',
-    extra: { label: 'Delete', danger: true, value: 'delete' },
+  if (b) bookmarkDialog({ url: b.url, title: b.title, id })
+}
+
+// ---------- add / edit bookmark: name + where to save it ----------
+const OTHER = 'Other'
+const folderLabel = (f) => (f === OTHER ? 'Other bookmarks' : f.split('/').map((p) => (p === OTHER ? 'Other bookmarks' : p)).join(' › '))
+
+function folderChoices() {
+  const set = new Set([BAR, OTHER])
+  for (const b of S.bookmarks) {
+    const parts = (b.folder || OTHER).split('/')
+    for (let i = 1; i <= parts.length; i++) set.add(parts.slice(0, i).join('/'))
+  }
+  // the bar and its folders first, then everything else, alphabetically
+  const rank = (f) => (f === BAR || f.startsWith(BAR + '/') ? 0 : f === OTHER || f.startsWith(OTHER + '/') ? 1 : 2)
+  return [...set].sort((a, z) => rank(a) - rank(z) || a.localeCompare(z))
+}
+
+let lastFolder = BAR
+try {
+  lastFolder = localStorage.getItem('kite.lastBookmarkFolder') || BAR
+} catch {}
+
+// Ask where to save (and under what name) before bookmarking. With an
+// existing bookmark it edits it instead, with a Remove button.
+export function bookmarkDialog({ url, title, id }) {
+  if (!url) return
+  const existing = id ? S.bookmarks.find((x) => x.id === id) : S.bookmarks.find((x) => x.url === url)
+  const choices = folderChoices()
+  const current = existing?.folder || (choices.includes(lastFolder) ? lastFolder : BAR)
+  setOverlay(true)
+  const ov = $('#overlay')
+  ov.innerHTML = ''
+  // under the star when it's on the toolbar, otherwise centered
+  const star = $('#toolbar [data-tb="bookmark"]')
+  const r = star?.getBoundingClientRect()
+  const place = r && r.width ? `left:auto;transform:none;top:${Math.round(r.bottom + 6)}px;right:${Math.max(8, Math.round(innerWidth - r.right - 4))}px;` : ''
+  const bd = h(`<div class="backdrop ${place ? 'clear' : ''}"></div>`)
+  const pop = h(`<form class="popover dialog bm-dialog" style="${place}width:340px">
+      <h3>${icon('star')} ${existing ? 'Edit bookmark' : 'Add bookmark'}</h3>
+      <label>Name<input class="input" name="title" value="${esc(existing?.title || title || url)}" spellcheck="false"></label>
+      ${id ? `<label>Address<input class="input" name="url" value="${esc(existing?.url || url)}" spellcheck="false"></label>` : ''}
+      <label>Save in<select class="input" name="folder">
+        ${choices.map((f) => `<option value="${esc(f)}" ${f === current ? 'selected' : ''}>${esc(folderLabel(f))}</option>`).join('')}
+        <option value="__new">New folder…</option>
+      </select></label>
+      <label class="bm-new hidden">Folder name<span class="bm-new-row"><input class="input" name="newFolder" placeholder="e.g. Recipes" spellcheck="false"><select class="input" name="parent" title="Where the new folder goes"><option value="${BAR}">on the bookmarks bar</option><option value="${OTHER}">in Other bookmarks</option></select></span></label>
+      <div class="row">${existing ? `<button type="button" class="btn danger" data-remove>Remove</button><div class="spacer"></div>` : ''}<button type="button" class="btn" data-cancel>Cancel</button><button class="btn primary" type="submit">${existing ? 'Save' : 'Add'}</button></div>
+    </form>`)
+  ov.append(bd, pop)
+  const sel = pop.elements.folder
+  const newBox = pop.querySelector('.bm-new')
+  sel.onchange = () => {
+    newBox.classList.toggle('hidden', sel.value !== '__new')
+    if (sel.value === '__new') pop.elements.newFolder.focus()
+  }
+  let closed = false
+  const close = () => {
+    if (closed) return
+    closed = true
+    setOverlay(false)
+    api.call('nav.focusPage')
+  }
+  const save = (list) => {
+    S.bookmarks = list
+    api.call('data.set', 'bookmarks', list)
+  }
+  pop.addEventListener('submit', (e) => {
+    e.preventDefault()
+    let folder = sel.value
+    if (folder === '__new') {
+      const name = pop.elements.newFolder.value.trim().replace(/\//g, '-')
+      if (!name) return pop.elements.newFolder.focus()
+      folder = `${pop.elements.parent.value}/${name}`
+    }
+    const name = pop.elements.title.value.trim() || url
+    const href = (id && pop.elements.url?.value.trim()) || existing?.url || url
+    if (existing) save(S.bookmarks.map((x) => (x.id === existing.id ? { ...x, title: name, url: href, folder } : x)))
+    else save([...S.bookmarks, { id: 'b' + Date.now(), title: name, url: href, folder, added: Date.now() }])
+    lastFolder = folder
+    try {
+      localStorage.setItem('kite.lastBookmarkFolder', folder)
+    } catch {}
+    close()
+    if (!existing) toast(folder === BAR ? 'Added to the bookmarks bar' : `Saved in ${folderLabel(folder)}`)
   })
-  if (!r) return
-  const list = r === 'delete' ? S.bookmarks.filter((x) => x.id !== id) : S.bookmarks.map((x) => (x.id === id ? { ...x, ...r } : x))
-  S.bookmarks = list
-  api.call('data.set', 'bookmarks', list)
+  pop.querySelector('[data-cancel]').onclick = close
+  pop.querySelector('[data-remove]')?.addEventListener('click', () => {
+    save(S.bookmarks.filter((x) => x.id !== existing.id))
+    close()
+    toast('Bookmark removed')
+  })
+  pop.addEventListener('keydown', (e) => e.key === 'Escape' && close())
+  bd.onclick = close
+  pop.elements.title.focus()
+  pop.elements.title.select()
 }

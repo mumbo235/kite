@@ -7,7 +7,7 @@ import { renderSidebar, setupResizers, setupAutoHide } from './sidebar.js'
 import { openPalette, toast, prompt } from './overlay.js'
 import { renderPanel, openTool, closeTool } from './panels.js'
 import { renderFindbar, showFind } from './find.js'
-import { renderBookmarksBar, editBookmark } from './bookmarksbar.js'
+import { renderBookmarksBar, editBookmark, bookmarkDialog } from './bookmarksbar.js'
 
 const api = window.kite
 export const S = {
@@ -355,6 +355,7 @@ api.on('favicons', (hosts) => {
   }
 })
 api.on('edit-bookmark', (id) => editBookmark(id))
+api.on('bookmark-dialog', (d) => bookmarkDialog(d))
 api.on('new-workspace', () => newWorkspace())
 // system dark mode flips and the once-a-minute schedule check only repaint
 // colors (a full re-render would rebuild the toolbar)

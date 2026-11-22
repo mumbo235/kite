@@ -209,7 +209,17 @@ app.whenReady().then(async () => {
   ctx.extensions = new Extensions(ctx)
 
   ctx.isBookmarked = (url) => !!url && ctx.data.get('bookmarks').some((b) => b.url === url)
+  // The star / Ctrl+D asks where to save it (bookmarks bar or a folder);
+  // on an already-bookmarked page it opens the same box to edit or remove.
   ctx.toggleBookmark = (url, title) => {
+    const t = ctx.browser.active()
+    url = url || (t?.wc ? t.wc.getURL() : t?.url)
+    title = title || t?.title || url
+    if (!url) return
+    ctx.browser.emit('bookmark-dialog', { url, title })
+  }
+  // Instant add/remove without asking (kept for internal use)
+  ctx.quickToggleBookmark = (url, title) => {
     const t = ctx.browser.active()
     url = url || (t?.wc ? t.wc.getURL() : t?.url)
     title = title || t?.title || url

@@ -1864,3 +1864,28 @@ body.measuring #panel {
 .ext-area:last-child::after {
   display: none;
 }
+
+/* add / edit bookmark */
+.bm-dialog h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bm-dialog h3 .icon {
+  color: var(--accent);
+}
+.bm-dialog select.input {
+  height: 34px;
+}
+.bm-new-row {
+  display: flex;
+  gap: 6px;
+}
+.bm-new-row .input:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.bm-new-row select.input {
+  flex: none;
+  width: 170px;
+}

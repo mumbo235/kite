@@ -81,7 +81,7 @@ class Menus {
         { label: 'Forward', enabled: wc.navigationHistory.canGoForward(), click: () => wc.navigationHistory.goForward() },
         { label: 'Reload', click: () => wc.reload() },
         sep,
-        { label: this.ctx.isBookmarked(wc.getURL()) ? 'Remove bookmark' : 'Bookmark this page', click: () => this.ctx.toggleBookmark() },
+        { label: this.ctx.isBookmarked(wc.getURL()) ? 'Edit bookmark…' : 'Bookmark this page…', click: () => this.ctx.toggleBookmark() },
         { label: 'Print…', click: () => wc.print() },
         { label: 'View page source', click: () => b.newTab('view-source:' + wc.getURL(), { afterActive: true }) },
         sep
