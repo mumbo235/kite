@@ -33,7 +33,7 @@ function extensionsArea() {
     api.call('menu.extensions', r.left, r.bottom + 4, { x: r.left, y: r.top, width: r.width, height: r.height })
   }
   wrap.append(list, btn)
-  extEls = { list, btn }
+  extEls = { list, btn, wrap }
   initExtensions()
   applyPins()
   // the list fills in asynchronously; hide unpinned ones as they appear
@@ -57,6 +57,8 @@ function applyPins() {
   }
   // the Extensions button shows once something is installed
   extEls.btn.style.display = extList.length ? '' : 'none'
+  // no extensions: no group (and no divider lines) at all
+  extEls.wrap.hidden = !extList.length
 }
 
 export function setExtensions(list) {

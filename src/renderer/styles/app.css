@@ -1812,8 +1812,36 @@ body.measuring #panel {
 .bm-icons .bm-chip {
   padding: 0 6px;
 }
+/* extensions get their own group on the toolbar, set apart by thin lines */
 .ext-area {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
+  margin: 0 6px;
+  padding: 0 7px;
+}
+.ext-area[hidden] {
+  display: none;
+}
+.ext-area::before,
+.ext-area::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  transform: translateY(-50%);
+}
+.ext-area::before {
+  left: 0;
+}
+.ext-area::after {
+  right: 0;
+}
+/* no line where the group already sits at the edge */
+.ext-area:first-child::before,
+.ext-area:last-child::after {
+  display: none;
 }
