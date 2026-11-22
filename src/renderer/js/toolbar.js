@@ -199,18 +199,23 @@ export function updateToolbarState(force) {
   site.title = url.startsWith('https://') ? 'Connection is secure' : url.startsWith('http://') ? 'Connection is not secure' : ''
 
   const chips = addr.querySelector('.chips')
-  if (setHTML(chips, t && t.zoom && Math.abs(t.zoom - 1) > 0.01 ? `<button class="zoom-chip" title="Reset zoom">${Math.round(t.zoom * 100)}%</button>` : ''))
+  if (setHTML(chips, t && t.zoom && Math.abs(t.zoom - (S.settings.pageZoom || 1)) > 0.01 ? `<button class="zoom-chip" title="Reset zoom">${Math.round(t.zoom * 100)}%</button>` : ''))
     chips.querySelector('.zoom-chip')?.addEventListener('click', () => api.call('zoom.by', 0))
 
   if (!editing || force) {
-    if (!editing) addrInput.value = displayURL(url)
+    // a different tab became active: show its address even if the bar is focused
+    if (!editing || force === 'tab') {
+      addrInput.value = displayURL(url)
+      if (document.activeElement === addrInput) addrInput.select()
+    }
     const view = addr.querySelector('.url-view')
     const shown = displayURL(url)
     try {
       const u = new URL(shown)
       if (u.protocol.startsWith('http')) {
         view.innerHTML = `<span>${esc(u.protocol)}//</span><b>${esc(u.host)}</b><span>${esc(u.pathname + u.search + u.hash)}</span>`
-        if (u.pathname === '/' && !u.search && !u.hash) view.innerHTML = `<b>${esc(u.host.replace(/^www\./, ''))}</b>`
+        // "site name only" setting, or a bare home page: just the domain
+        if (S.settings.addressFullUrl === false || (u.pathname === '/' && !u.search && !u.hash)) view.innerHTML = `<b>${esc(u.host.replace(/^www\./, ''))}</b>`
       } else view.textContent = shown
     } catch {
       view.textContent = shown

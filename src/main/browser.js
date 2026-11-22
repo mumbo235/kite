@@ -263,6 +263,9 @@ class Browser {
         contextIsolation: true,
         nodeIntegration: false,
         spellcheck: true,
+        // your default zoom and text size for websites
+        zoomFactor: this.settings.pageZoom || 1,
+        defaultFontSize: this.settings.webFontSize || 16,
         scrollBounce: true,
       },
     })
@@ -590,7 +593,7 @@ class Browser {
 
   zoom(delta, tab = this.active()) {
     if (!tab?.wc) return
-    const z = delta === 0 ? 1 : Math.min(5, Math.max(0.25, +(tab.wc.getZoomFactor() + delta).toFixed(2)))
+    const z = delta === 0 ? this.settings.pageZoom || 1 : Math.min(5, Math.max(0.25, +(tab.wc.getZoomFactor() + delta).toFixed(2)))
     tab.wc.setZoomFactor(z)
     tab.zoom = z
     this.emitTabs()

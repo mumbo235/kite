@@ -198,7 +198,7 @@ export function setSettings(patch) {
 let layoutSig = null
 function applySettings() {
   const s = S.settings
-  applyTheme(s, S.themes)
+  applyTheme(s, S.themes, undefined, themeExtra())
   $('#custom-css').textContent = s.customCSS || ''
   // sliding animation only for the sidebar opening/closing; bigger layout
   // switches (tab position, sidebar side, compact, bookmarks bar) just snap
@@ -225,6 +225,11 @@ function applyLayout() {
   b.toggle('sb-hidden', !!s.sidebarCollapsed && (s.tabLayout === 'horizontal' || s.sidebarAutoHide))
   b.toggle('sb-mini', !!s.sidebarCollapsed && s.tabLayout === 'vertical' && !s.sidebarAutoHide)
   b.toggle('compact', !!s.compact)
+  b.toggle('tabs-pill', s.tabShape === 'pill')
+  b.toggle('tabs-square', s.tabShape === 'square')
+  b.toggle('close-always', s.tabCloseButton === 'always')
+  b.toggle('bm-icons', !!s.bookmarksBarIconsOnly)
+  document.documentElement.style.setProperty('--win-radius', (s.windowRadius ?? 8) + 'px')
   document.documentElement.style.setProperty('--sb-width', s.sidebarWidth + 'px')
   document.documentElement.style.setProperty('--panel-width', s.panelWidth + 'px')
   document.documentElement.style.setProperty('--htab-width', (s.tabWidth || 260) + 'px')
@@ -271,11 +276,16 @@ function updateWindowControls() {
 }
 
 // ---------- events from main ----------
+// extra inputs for the theme: the current workspace's color
+export const themeExtra = () => ({ workspaceColor: S.workspaces?.find((w) => w.id === S.workspace)?.color })
+
 api.on('tabs', (st) => {
   const prevActive = S.activeId
+  const prevWs = S.workspace
   Object.assign(S, { tabs: st.tabs, activeId: st.activeId, workspace: st.workspace, workspaces: st.workspaces })
+  if (S.settings?.workspaceAccent && prevWs !== S.workspace) applyTheme(S.settings, S.themes, undefined, themeExtra())
   renderTabs()
-  updateToolbarState(prevActive !== S.activeId)
+  updateToolbarState(prevActive !== S.activeId ? 'tab' : false)
   renderSidebar()
 })
 api.on('settings', (s) => {
@@ -346,7 +356,9 @@ api.on('favicons', (hosts) => {
 })
 api.on('edit-bookmark', (id) => editBookmark(id))
 api.on('new-workspace', () => newWorkspace())
-onSystemThemeChange(() => applySettings())
+// system dark mode flips and the once-a-minute schedule check only repaint
+// colors (a full re-render would rebuild the toolbar)
+onSystemThemeChange(() => S.settings && applyTheme(S.settings, S.themes, undefined, themeExtra()))
 
 export async function addWebPanel() {
   const r = await prompt({
@@ -430,7 +442,7 @@ async function boot() {
 api.on('settings', async (s) => {
   if (s.customThemes?.length !== S.themes.filter((t) => !t.builtin).length) {
     S.themes = await api.call('themes.list')
-    applyTheme(S.settings, S.themes)
+    applyTheme(S.settings, S.themes, undefined, themeExtra())
   }
 })
 

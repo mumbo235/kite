@@ -85,13 +85,16 @@ const PAGES_DIR = path.join(__dirname, '../pages')
 const RENDERER_DIR = path.join(__dirname, '../renderer')
 
 function handleInternalProtocol(ctx, ses) {
-  ses.protocol.handle('kite', (req) => {
+  ses.protocol.handle('kite', async (req) => {
     const u = new URL(req.url)
     let file
     if (u.host === 'favicon') return ctx.favicons.serve(u.searchParams.get('u'))
     if (u.host === 'bg') {
       const f = ctx.backgrounds.file(u.pathname)
-      return f ? net.fetch(pathToFileURL(f).toString()) : new Response('Not found', { status: 404 })
+      if (!f) return new Response('Not found', { status: 404 })
+      // readable by the new tab page's canvas (accent color from the photo)
+      const res = await net.fetch(pathToFileURL(f).toString())
+      return new Response(res.body, { headers: { 'content-type': res.headers.get('content-type') || 'image/jpeg', 'access-control-allow-origin': '*' } })
     }
     if (u.host === 'shared') file = path.join(PAGES_DIR, 'shared', u.pathname)
     else if (u.host === 'ui') file = path.join(RENDERER_DIR, u.pathname)
@@ -224,7 +227,8 @@ app.whenReady().then(async () => {
     const s = ctx.settings.data
     if ('shortcuts' in patch) ctx.shortcuts.rebuild()
     if ('adblock' in patch) ctx.adblock.apply()
-    if ('theme' in patch || 'customThemes' in patch) applyNativeTheme(s)
+    if ('theme' in patch || 'customThemes' in patch || 'themeSchedule' in patch) applyNativeTheme(s)
+    if ('pageZoom' in patch) for (const t of ctx.browser.tabs.values()) if (t.wc && !t.wc.isDestroyed()) t.wc.setZoomFactor(s.pageZoom || 1)
     if ('aiProviders' in patch || 'webPanels' in patch) {
       // drop panel views whose URL changed or that were removed
       for (const key of [...ctx.browser.panels.keys()]) if (!ctx.browser.panelURL(key)) ctx.browser.destroyPanel(key)
@@ -234,21 +238,39 @@ app.whenReady().then(async () => {
     return s
   }
 
+  // Websites follow the browser theme (prefers-color-scheme), including the
+  // time-of-day schedule.
+  function scheduledThemeId(s) {
+    const sc = s.themeSchedule
+    if (!sc?.enabled) return s.theme
+    const mins = (v) => {
+      const [h, m] = String(v || '0:0').split(':').map(Number)
+      return (h || 0) * 60 + (m || 0)
+    }
+    const d = new Date()
+    const t = d.getHours() * 60 + d.getMinutes()
+    const from = mins(sc.from)
+    const to = mins(sc.to)
+    const dark = from <= to ? t >= from && t < to : t >= from || t < to
+    return dark ? sc.dark : sc.light
+  }
   function applyNativeTheme(s) {
-    if (s.theme === 'light' || s.theme === 'dark') nativeTheme.themeSource = s.theme
-    else if (s.theme === 'system') nativeTheme.themeSource = 'system'
+    const id = scheduledThemeId(s)
+    if (id === 'light' || id === 'dark') nativeTheme.themeSource = id
+    else if (id === 'system') nativeTheme.themeSource = 'system'
     else {
-      const t = (s.customThemes || []).find((x) => x.id === s.theme)
+      const t = (s.customThemes || []).find((x) => x.id === id)
       let dark = t?.dark
       if (dark === undefined) {
         try {
-          dark = require(path.join(__dirname, '../themes', s.theme + '.json')).dark
+          dark = require(path.join(__dirname, '../themes', id + '.json')).dark
         } catch {}
       }
       nativeTheme.themeSource = dark === undefined ? 'system' : dark ? 'dark' : 'light'
     }
   }
   applyNativeTheme(ctx.settings.data)
+  setInterval(() => ctx.settings.data.themeSchedule?.enabled && applyNativeTheme(ctx.settings.data), 60000)
   nativeTheme.on('updated', () => ctx.browser?.emit('native-theme', nativeTheme.shouldUseDarkColors))
 
   registerApi(ctx)
@@ -365,14 +387,19 @@ function migrate(ctx) {
   if (ctx.settings.savedVersion < 2) {
     if (s.newtab?.greeting === 'Kite.') s.newtab.greeting = ''
     if (s.searchEngine === 'duckduckgo') s.searchEngine = 'google'
-    s.settingsVersion = 2
+    s.settingsVersion = Math.max(s.settingsVersion, 2)
+    ctx.settings.save()
+  }
+  if (ctx.settings.savedVersion < 4) {
+    if (s.newtab?.greeting) s.newtab.greetingMode = 'custom'
+    s.settingsVersion = 4
     ctx.settings.save()
   }
   if (ctx.settings.savedVersion < 3) {
     s.showBookmarksBar = true
     if (s.newtab?.wallpaper) s.newtab.background = { ...s.newtab.background, type: 'image', image: s.newtab.wallpaper }
     delete s.newtab?.wallpaper
-    s.settingsVersion = 3
+    s.settingsVersion = Math.max(s.settingsVersion, 3)
     ctx.settings.save()
   }
   const ws = ctx.data.get('workspaces')

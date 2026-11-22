@@ -85,6 +85,31 @@ main {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+.clock[data-style='bold'] {
+  font-weight: 750;
+  letter-spacing: -0.045em;
+}
+.clock[data-style='mono'] {
+  font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', monospace;
+  font-weight: 500;
+  font-size: 58px;
+  letter-spacing: -0.04em;
+}
+.clock[data-style='serif'] {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+.date {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--fg-muted);
+}
+.date:empty {
+  display: none;
+}
+.on-dark .date,
 .on-dark .clock,
 .on-dark .greet {
   text-shadow: 0 2px 24px rgb(0 0 0 / 0.35);

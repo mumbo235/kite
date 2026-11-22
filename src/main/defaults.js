@@ -55,7 +55,7 @@ const DEFAULT_SHORTCUTS = {
 }
 
 const SETTINGS_DEFAULTS = {
-  settingsVersion: 3,
+  settingsVersion: 4,
   // Appearance
   theme: 'system', // system | light | dark | <custom theme id>
   accent: '', // empty = theme accent
@@ -66,6 +66,11 @@ const SETTINGS_DEFAULTS = {
   animations: true,
   animationSpeed: 1, // multiplier
   customCSS: '',
+  // switch between a light and a dark theme by time of day
+  themeSchedule: { enabled: false, light: 'light', dark: 'dark', from: '19:00', to: '07:00' },
+  workspaceAccent: false, // tint the browser with the current workspace's color
+  accentFromWallpaper: false, // take the accent color from today's new tab photo
+  windowRadius: 8, // rounded window corners (Linux)
   customThemes: [],
   userStyles: [], // [{ match: 'example.com', css: '...' }]
 
@@ -74,6 +79,10 @@ const SETTINGS_DEFAULTS = {
   sidebarSide: 'left',
   sidebarWidth: 260,
   tabWidth: 260, // widest a top tab gets (they shrink as you open more)
+  tabShape: 'rounded', // rounded | pill | square
+  tabCloseButton: 'hover', // hover | always
+  bookmarksBarIconsOnly: false,
+  addressFullUrl: true, // false = show just the site name
   sidebarCollapsed: false,
   sidebarAutoHide: false,
   compact: false,
@@ -109,6 +118,8 @@ const SETTINGS_DEFAULTS = {
   homepage: 'kite://newtab',
   newTabPage: 'kite://newtab',
   restoreSession: true,
+  pageZoom: 1, // default zoom for websites
+  webFontSize: 16, // default text size websites use
   searchEngine: 'google',
   customEngines: [], // [{ id, name, url, keyword }]
   searchSuggestions: true,
@@ -119,6 +130,12 @@ const SETTINGS_DEFAULTS = {
   newtab: {
     // type: daily (scenic photo, changes every day) | gradient | solid | image | none
     background: { type: 'daily', daily: 0, gradient: 'aurora', color: '#1e293b', image: '', dim: 0.2, blur: 0 },
+    name: '', // used in the greeting
+    greetingMode: 'off', // off | time ("Good evening, Name") | custom (the text below)
+    clockFormat: 'auto', // auto | 12 | 24
+    showSeconds: false,
+    showDate: false,
+    clockStyle: 'thin', // thin | bold | mono | serif
     showLogo: true,
     showClock: true,
     showSearch: true,

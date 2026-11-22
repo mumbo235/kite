@@ -1787,3 +1787,28 @@ body.measuring #sidebar,
 body.measuring #panel {
   transition: none !important;
 }
+
+/* ---------------- personalization ---------------- */
+.tabs-pill .tab,
+.tabs-pill .pin-tab {
+  border-radius: 999px;
+}
+.tabs-pill #htabs .tab {
+  height: 30px;
+  margin-bottom: 4px;
+  border-radius: 999px;
+}
+.tabs-square .tab,
+.tabs-square .pin-tab,
+.tabs-square #htabs .tab {
+  border-radius: 0;
+}
+.close-always .tab .close {
+  opacity: 1;
+}
+.bm-icons .bm-chip span {
+  display: none;
+}
+.bm-icons .bm-chip {
+  padding: 0 6px;
+}

@@ -103,7 +103,11 @@ async function paintBackground() {
   }
   if (photo) {
     const img = new Image()
+    // Kite's own photos allow reading their colors (accent from the photo);
+    // pictures from other sites may not, so don't ask for that there
+    if (photo.startsWith('kite://')) img.crossOrigin = 'anonymous'
     img.onload = () => {
+      if (s.accentFromWallpaper) pickAccent(img)
       el.classList.remove('ready')
       requestAnimationFrame(() => requestAnimationFrame(apply))
     }
@@ -142,6 +146,36 @@ function setViewport(v) {
 api.call('layout.viewport').then(setViewport)
 api.on('viewport', setViewport)
 
+// "Accent from today's photo": a vivid color from the picture becomes the
+// browser's accent color.
+function pickAccent(img) {
+  try {
+    const c = document.createElement('canvas')
+    c.width = 48
+    c.height = 27
+    const ctx = c.getContext('2d', { willReadFrequently: true })
+    ctx.drawImage(img, 0, 0, c.width, c.height)
+    const d = ctx.getImageData(0, 0, c.width, c.height).data
+    let best = null
+    let bestScore = -1
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2]
+      const max = Math.max(r, g, b), min = Math.min(r, g, b)
+      const sat = max ? (max - min) / max : 0
+      const light = (max + min) / 510
+      // prefer saturated, mid-brightness colors that work as an accent
+      const score = sat * (1 - Math.abs(light - 0.5) * 1.6)
+      if (score > bestScore) {
+        bestScore = score
+        best = [r, g, b]
+      }
+    }
+    if (!best) return
+    const hex = '#' + best.map((v) => v.toString(16).padStart(2, '0')).join('')
+    if (hex !== s.wallpaperAccent) api.call('settings.set', { wallpaperAccent: hex })
+  } catch {}
+}
+
 // ---------- page ----------
 function render() {
   const n = s.newtab
@@ -149,7 +183,9 @@ function render() {
   $('#brand').style.display = n.showLogo !== false ? '' : 'none'
   $('#search').style.display = n.showSearch ? '' : 'none'
   $('#tiles').style.display = n.showShortcuts ? '' : 'none'
-  $('#greet').textContent = n.greeting || ''
+  $('#greet').textContent = greetingText(n)
+  $('#clock').dataset.style = n.clockStyle || 'thin'
+  tick()
   $('#q').placeholder = `Search ${(engines[s.searchEngine] || engines.google).name} or type a URL`
   $('#tiles').innerHTML =
     n.shortcuts
@@ -171,7 +207,8 @@ function syncDrawer() {
   const bg = bgOf()
   $('#bg-type').innerHTML = TYPES.map(([v, l]) => `<button data-t="${v}" class="${bg.type === v ? 'on' : ''}">${l}</button>`).join('')
   for (const c of document.querySelectorAll('[data-show]')) c.checked = !!s.newtab[c.dataset.show]
-  if (document.activeElement !== $('#greeting')) $('#greeting').value = s.newtab.greeting || ''
+  if (document.activeElement !== $('#greeting')) $('#greeting').value = s.newtab.greetingMode === 'custom' ? s.newtab.greeting || '' : ''
+  if (document.activeElement !== $('#yourname')) $('#yourname').value = s.newtab.name || ''
   $('#dim').value = bg.dim
   $('#blur').value = bg.blur
   $('#sliders').style.display = bg.type === 'daily' || bg.type === 'image' ? '' : 'none'
@@ -249,7 +286,14 @@ $('#bg-options').addEventListener('submit', (e) => {
 $('#dim').oninput = (e) => setBg({ dim: +e.target.value })
 $('#blur').oninput = (e) => setBg({ blur: +e.target.value })
 for (const c of document.querySelectorAll('[data-show]')) c.onchange = () => setNewtab({ [c.dataset.show]: c.checked })
-$('#greeting').onchange = (e) => setNewtab({ greeting: e.target.value })
+$('#greeting').onchange = (e) => {
+  const v = e.target.value.trim()
+  setNewtab({ greeting: v, greetingMode: v ? 'custom' : s.newtab.name ? 'time' : 'off' })
+}
+$('#yourname').onchange = (e) => {
+  const v = e.target.value.trim()
+  setNewtab({ name: v, greetingMode: v ? 'time' : s.newtab.greetingMode === 'time' ? 'off' : s.newtab.greetingMode })
+}
 $('#more').onclick = () => api.call('nav.go', 'kite://settings#newtab')
 
 function openDrawer(open) {
@@ -264,7 +308,29 @@ document.addEventListener('keydown', (e) => e.key === 'Escape' && openDrawer(fal
 
 // ---------- clock, search, shortcuts ----------
 $('#search-ic').innerHTML = icon('search')
-const tick = () => ($('#clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+// greeting: off, by time of day with your name, or your own text
+function greetingText(n) {
+  if (n.greetingMode === 'custom') return n.greeting || ''
+  if (n.greetingMode !== 'time') return ''
+  const h = new Date().getHours()
+  const part = h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+  return n.name ? `${part}, ${n.name}` : part
+}
+
+function tick() {
+  const n = s.newtab
+  const now = new Date()
+  const opts = { hour: n.clockFormat === '24' ? '2-digit' : 'numeric', minute: '2-digit' }
+  if (n.showSeconds) opts.second = '2-digit'
+  if (n.clockFormat === '12') opts.hour12 = true
+  if (n.clockFormat === '24') opts.hourCycle = 'h23'
+  $('#clock').textContent = now.toLocaleTimeString([], opts)
+  const date = n.showDate ? now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) : ''
+  if ($('#date').textContent !== date) $('#date').textContent = date
+  // the time-of-day greeting changes on its own
+  const g = greetingText(n)
+  if ($('#greet').textContent !== g) $('#greet').textContent = g
+}
 tick()
 setInterval(tick, 1000)
 

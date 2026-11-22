@@ -40,7 +40,7 @@ function savedPop() {
 
 const row = (label, desc, control, cls = '') => `<div class="row ${cls}" data-search="${esc((label + ' ' + (desc || '')).toLowerCase())}"><div class="lbl"><div>${label}</div>${desc ? `<div class="d">${desc}</div>` : ''}</div>${control}</div>`
 const toggle = (path) => `<input type="checkbox" class="switch" data-k="${path}" ${get(path) ? 'checked' : ''}>`
-const select = (path, opts) => `<select class="input" data-k="${path}">${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(get(path)) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`
+const select = (path, opts) => `<select class="input" data-k="${path}" ${typeof get(path) === 'number' ? 'data-num' : ''}>${opts.map(([v, l]) => `<option value="${esc(v)}" ${String(get(path)) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`
 const seg = (path, opts) => `<div class="seg" data-seg="${path}">${opts.map(([v, l]) => `<button data-v="${esc(v)}" class="${String(get(path)) === String(v) ? 'on' : ''}">${esc(l)}</button>`).join('')}</div>`
 const range = (path, min, max, step, unit = '') => `<input type="range" data-k="${path}" data-num min="${min}" max="${max}" step="${step}" value="${get(path)}"><span class="val" data-val="${path}">${get(path)}${unit}</span>`
 const text = (path, ph = '', w = 280) => `<input class="input" style="width:${w}px" data-k="${path}" data-lazy value="${esc(get(path) ?? '')}" placeholder="${esc(ph)}" spellcheck="false">`
@@ -48,25 +48,32 @@ const group = (title, body) => `<div class="group">${title ? `<div class="group-
 
 // ---------- sections ----------
 const SECTIONS = [
-  { id: 'appearance', title: 'Appearance', icon: 'moon', desc: 'Themes, colors, fonts and motion.', render: appearance },
-  { id: 'layout', title: 'Layout', icon: 'sidebar', desc: 'Tabs, sidebar, toolbar and panels.', render: layout },
-  { id: 'ai', title: 'AI chat', icon: 'sparkles', desc: 'The chatbot side panel.', render: ai },
-  { id: 'search', title: 'Search', icon: 'search', desc: 'Search engines and address bar.', render: search },
-  { id: 'newtab', title: 'Start & new tab', icon: 'home', desc: 'Home page, new tab page and session restore.', render: newtab },
-  { id: 'shortcuts', title: 'Shortcuts', icon: 'command', desc: 'Rebind any keyboard shortcut.', render: shortcuts },
-  { id: 'gestures', title: 'Mouse gestures', icon: 'zap', desc: 'Hold the right mouse button and draw.', render: gestures },
+  { group: 'Personalize' },
+  { id: 'appearance', title: 'Appearance', icon: 'moon', desc: 'Theme, colors, fonts and motion.', render: appearance },
+  { id: 'layout', title: 'Tabs & layout', icon: 'sidebar', desc: 'How tabs, the sidebar and the toolbar look and sit.', render: layout },
+  { id: 'newtab', title: 'New tab', icon: 'home', desc: 'Greeting, clock, background and shortcuts.', render: newtab },
+  { id: 'panels', title: 'Sidebar & panels', icon: 'sparkles', desc: 'Sidebar tools, AI chatbots and web panels.', render: panels },
+  { group: 'Browsing' },
+  { id: 'search', title: 'Search', icon: 'search', desc: 'Search engines and address bar suggestions.', render: search },
+  { id: 'browsing', title: 'Websites & startup', icon: 'globe', desc: 'What opens at launch, default zoom and text size, and your own site styles.', render: browsing },
   { id: 'privacy', title: 'Privacy & security', icon: 'shield', desc: 'Ad blocking, tracking and site data.', render: privacy },
-  { id: 'styles', title: 'Site styles', icon: 'edit', desc: 'Inject your own CSS into websites.', render: styles },
+  { id: 'performance', title: 'Performance', icon: 'gauge', desc: 'Keep Kite light: RAM and CPU limits and sleeping tabs.', render: performance },
+  { group: 'Controls' },
+  { id: 'keys', title: 'Keyboard & mouse', icon: 'command', desc: 'Shortcuts and mouse gestures.', render: keys },
+  { group: 'Your data' },
   { id: 'extensions', title: 'Extensions', icon: 'blocks', desc: 'Chrome extensions.', render: extensions },
-  { id: 'import', title: 'Import & export', icon: 'download', desc: 'Bring your bookmarks and history from another browser.', render: importSection },
-  { id: 'profiles', title: 'Profiles', icon: 'layers', desc: 'Separate logins, history and settings.', render: profiles },
-  { id: 'about', title: 'About & backup', icon: 'kite', desc: 'Versions, data folder, import/export.', render: about },
+  { id: 'import', title: 'Import & export', icon: 'download', desc: 'Bring bookmarks, history and logins over from another browser.', render: importSection },
+  { id: 'profiles', title: 'Profiles & backup', icon: 'kite', desc: 'Separate profiles, settings backup, version info and your data folder.', render: profiles },
 ]
+const PAGES = SECTIONS.filter((x) => x.id)
+// older links (#ai, #shortcuts...) still land in the right place
+const ALIAS = { ai: 'panels', styles: 'browsing', shortcuts: 'keys', gestures: 'keys', about: 'profiles' }
+const pick = (id) => (PAGES.some((x) => x.id === (ALIAS[id] || id)) ? ALIAS[id] || id : 'appearance')
 
-let current = (location.hash || '#appearance').slice(1)
+let current = pick((location.hash || '#appearance').slice(1))
 
 function renderNav() {
-  $('#nav-links').innerHTML = SECTIONS.map((s) => `<button class="nav-link ${s.id === current ? 'on' : ''}" data-s="${s.id}">${icon(s.icon)} ${s.title}</button>`).join('')
+  $('#nav-links').innerHTML = SECTIONS.map((s) => (s.group ? `<div class="nav-group">${s.group}</div>` : `<button class="nav-link ${s.id === current ? 'on' : ''}" data-s="${s.id}">${icon(s.icon)} ${s.title}</button>`)).join('')
 }
 $('#nav-links').onclick = (e) => {
   const b = e.target.closest('[data-s]')
@@ -82,7 +89,7 @@ $('#filter').oninput = () => render()
 
 async function render() {
   const q = $('#filter').value.trim().toLowerCase()
-  const list = q ? SECTIONS : SECTIONS.filter((s) => s.id === current)
+  const list = q ? PAGES : PAGES.filter((s) => s.id === current)
   const html = []
   for (const s of list) html.push(`<section data-sec="${s.id}"><div class="sec-title"><h1>${s.title}</h1><p>${s.desc}</p></div>${await s.render()}</section>`)
   $('#content').innerHTML = html.join('')
@@ -174,6 +181,7 @@ function appearance() {
     ['Georgia, serif', 'Serif'],
   ]
   if (!fonts.find((f) => f[0] === S.font)) fonts.push([S.font, S.font])
+  const themeOpts = themes.map((t) => [t.id, t.name])
   return (
     group('Theme', `<div class="themes">${cards}</div><div class="row"><div class="lbl"><div>Your themes</div><div class="d">Create a theme from scratch, or import/export JSON theme files.</div></div><div class="btn-row"><button class="btn" id="theme-create">${icon('plus')} Create</button><button class="btn" id="theme-import">Import</button><button class="btn" id="theme-export">Export</button>${isCustom ? '<button class="btn danger" id="theme-delete">Delete</button>' : ''}</div></div>`) +
     group(
@@ -185,8 +193,22 @@ function appearance() {
       ) +
         row('Font', 'Used across the browser interface.', select('font', fonts)) +
         row('Text size', '', range('fontSize', 11, 17, 1, 'px')) +
-        row('Corner radius', 'From sharp to round.', range('radius', 0, 18, 1, 'px')) +
+        row('Corner radius', 'Buttons, cards and menus, from sharp to round.', range('radius', 0, 18, 1, 'px')) +
+        (/Linux/.test(navigator.platform) ? row('Window corners', 'How round the edges of the Kite window are.', range('windowRadius', 0, 16, 1, 'px')) : '') +
         row('Density', 'Spacing of tabs and lists.', seg('density', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']]))
+    ) +
+    group(
+      'Theme schedule',
+      row('Switch themes by time of day', 'Use a dark theme in the evening and a light one during the day. Websites follow along.', toggle('themeSchedule.enabled')) +
+        row('Day theme', '', select('themeSchedule.light', themeOpts)) +
+        row('Night theme', '', select('themeSchedule.dark', themeOpts)) +
+        row('Night starts', '', `<input type="time" class="input" data-k="themeSchedule.from" data-lazy value="${esc(S.themeSchedule.from)}">`) +
+        row('Day starts', '', `<input type="time" class="input" data-k="themeSchedule.to" data-lazy value="${esc(S.themeSchedule.to)}">`)
+    ) +
+    group(
+      'Where the accent color comes from',
+      row('Workspace colors', 'Tint the browser with the color of the workspace you’re in.', toggle('workspaceAccent')) +
+        row('Today’s new tab photo', 'Pick a vivid color from the daily photo (or your own picture).', toggle('accentFromWallpaper'))
     ) +
     group('Motion', row('Animations', 'Turn off for an instant, no-motion UI.', toggle('animations')) + row('Animation speed', 'Lower is faster.', range('animationSpeed', 0.3, 2, 0.1, '×'))) +
     group(
@@ -281,13 +303,41 @@ function sortable(key, labels) {
 }
 
 function layout() {
+  return (
+    group(
+      'Tabs',
+      row('Tab position', 'In the sidebar (vertical) or along the top.', seg('tabLayout', [['vertical', 'Sidebar'], ['horizontal', 'Top']])) +
+        row('Tab shape', '', seg('tabShape', [['rounded', 'Rounded'], ['pill', 'Pill'], ['square', 'Square']])) +
+        row('Close buttons', '', seg('tabCloseButton', [['hover', 'On hover'], ['always', 'Always']])) +
+        row('Top tab width', 'With tabs on top: how wide they are when only a few are open. They shrink as you open more.', range('tabWidth', 140, 400, 10, 'px'))
+    ) +
+    group(
+      'Sidebar',
+      row('Position', '', seg('sidebarSide', [['left', 'Left'], ['right', 'Right']])) +
+        row('Collapse', 'Sidebar tabs: shrink to icons. Top tabs: hide the tool rail.', toggle('sidebarCollapsed')) +
+        row('Auto-hide', 'When collapsed, hover the screen edge to reveal it.', toggle('sidebarAutoHide')) +
+        row('Width', '', range('sidebarWidth', 180, 480, 10, 'px')) +
+        row('Compact mode', 'Sidebar tabs: put the address bar in the sidebar for more page space.', toggle('compact'))
+    ) +
+    group(
+      'Toolbar & address bar',
+      row('Address bar shows', '', seg('addressFullUrl', [['true', 'Full address'], ['false', 'Site name only']])) +
+        row('Bookmarks bar', 'Shows bookmarks in the “Bookmarks bar” folder.', toggle('showBookmarksBar')) +
+        row('Bookmarks as icons only', 'Fit more on the bar; hover a bookmark to see its name.', toggle('bookmarksBarIconsOnly')) +
+        `<div class="hint">Drag to reorder the toolbar, switch to show or hide:</div>` +
+        sortable('toolbar', TOOLBAR_LABELS)
+    )
+  )
+}
+
+// ---------- Sidebar & panels ----------
+function panels() {
   after.push(() => {
     const box = $('#panels-list')
     box?.addEventListener('change', (e) => {
       const it = e.target.closest('[data-pid]')
       if (!it) return
-      const list = S.webPanels.map((p) => (p.id === it.dataset.pid ? { ...p, [e.target.dataset.f]: e.target.value } : p))
-      set('webPanels', list)
+      set('webPanels', S.webPanels.map((p) => (p.id === it.dataset.pid ? { ...p, [e.target.dataset.f]: e.target.value } : p)))
     })
     box?.addEventListener('click', (e) => {
       const del = e.target.closest('[data-del]')
@@ -296,27 +346,13 @@ function layout() {
     $('#panel-add')?.addEventListener('click', () => set('webPanels', [...S.webPanels, { id: 'p' + Date.now().toString(36), url: 'https://', title: 'New panel' }]).then(render))
   })
   return (
-    group(
-      'Tabs & sidebar',
-      row('Tab layout', 'Vertical tabs live in the sidebar; horizontal tabs sit on top.', seg('tabLayout', [['vertical', 'Vertical'], ['horizontal', 'Horizontal']])) +
-        row('Sidebar position', '', seg('sidebarSide', [['left', 'Left'], ['right', 'Right']])) +
-        row('Collapse sidebar', 'Vertical: shrink to icons. Horizontal: hide the tool rail.', toggle('sidebarCollapsed')) +
-        row('Auto-hide sidebar', 'When collapsed, hover the screen edge to reveal it.', toggle('sidebarAutoHide')) +
-        row('Sidebar width', '', range('sidebarWidth', 180, 480, 10, 'px')) +
-        row('Top tab width', 'With tabs on top: how wide tabs are when only a few are open. They shrink as you open more.', range('tabWidth', 140, 400, 10, 'px')) +
-        row('Side panel width', 'AI chat, notes, web panels…', range('panelWidth', 300, 900, 10, 'px')) +
-        row('Compact mode', 'Vertical layout: moves the address bar into the sidebar for more page space.', toggle('compact')) +
-        row('Bookmarks bar', 'Shows bookmarks in the “Bookmarks bar” folder.', toggle('showBookmarksBar'))
-    ) +
-    group('Toolbar — drag to reorder, toggle to show', sortable('toolbar', TOOLBAR_LABELS)) +
-    group('Sidebar tools — drag to reorder, toggle to show', sortable('sidebarTools', TOOL_LABELS)) +
+    group('Sidebar tools — drag to reorder, switch to show', sortable('sidebarTools', TOOL_LABELS)) +
+    group('', row('Side panel width', 'AI chat, notes, web panels…', range('panelWidth', 300, 900, 10, 'px'))) +
+    ai() +
     group(
       'Web panels',
       `<div class="hint">Pin any website to the sidebar (music, mail, chat…). They keep their own logins. Right-click a panel icon in the sidebar to remove it.</div><div id="panels-list">${S.webPanels
-        .map(
-          (p) =>
-            `<div class="s-item" data-pid="${p.id}"><div class="grow"><input class="input" style="max-width:160px" data-f="title" value="${esc(p.title)}"><input class="input" data-f="url" value="${esc(p.url)}" spellcheck="false"></div><button class="btn ghost danger" data-del="${p.id}">${icon('trash')}</button></div>`
-        )
+        .map((p) => `<div class="s-item" data-pid="${p.id}"><div class="grow"><input class="input" style="max-width:160px" data-f="title" value="${esc(p.title)}"><input class="input" data-f="url" value="${esc(p.url)}" spellcheck="false"></div><button class="btn ghost danger" data-del="${p.id}">${icon('trash')}</button></div>`)
         .join('')}</div><div class="row"><button class="btn" id="panel-add">${icon('plus')} Add web panel</button></div>`
     )
   )
@@ -408,21 +444,72 @@ async function search() {
 function newtab() {
   return (
     group(
+      'Greeting',
+      row('Your name', 'Used in the greeting, e.g. “Good evening, Sam”.', text('newtab.name', 'Your first name', 220)) +
+        row('Greeting', '', seg('newtab.greetingMode', [['off', 'Off'], ['time', 'Time of day'], ['custom', 'My own text']])) +
+        row('Your own text', 'Shown when “My own text” is picked.', text('newtab.greeting', 'Anything you like'))
+    ) +
+    group(
+      'Clock',
+      row('Show clock', '', toggle('newtab.showClock')) +
+        row('Format', '', seg('newtab.clockFormat', [['auto', 'Automatic'], ['12', '12-hour'], ['24', '24-hour']])) +
+        row('Style', '', seg('newtab.clockStyle', [['thin', 'Thin'], ['bold', 'Bold'], ['mono', 'Mono'], ['serif', 'Serif']])) +
+        row('Show seconds', '', toggle('newtab.showSeconds')) +
+        row('Show the date', '', toggle('newtab.showDate'))
+    ) +
+    group(
+      'Page',
+      row('Background', 'Pick photos, gradients, colors or your own pictures with “Customize” on the new tab page.', select('newtab.background.type', [['daily', 'Daily scenic photo'], ['gradient', 'Gradient'], ['solid', 'Solid color'], ['image', 'My picture'], ['none', 'Plain (theme color)']])) +
+        row('Kite logo', '', toggle('newtab.showLogo')) +
+        row('Search box', '', toggle('newtab.showSearch')) +
+        row('Shortcuts', 'Edit them directly on the new tab page.', toggle('newtab.showShortcuts'))
+    )
+  )
+}
+
+// ---------- Websites & startup ----------
+function browsing() {
+  const zooms = [0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2].map((z) => [z, Math.round(z * 100) + '%'])
+  return (
+    group(
       'Startup',
       row('Restore tabs on startup', 'Reopen the tabs from your last session.', toggle('restoreSession')) +
         row('Home page', 'Where the home button goes.', text('homepage', 'kite://newtab')) +
-        row('New tab page', 'Use kite://newtab or any URL.', text('newTabPage', 'kite://newtab'))
+        row('New tab page', 'Use kite://newtab or any address.', text('newTabPage', 'kite://newtab'))
     ) +
     group(
-      'New tab page',
-      row('Greeting', '', text('newtab.greeting', 'Optional text under the clock')) +
-        row('Background', 'Pick gradients, colors and your own pictures with “Customize” on the new tab page.', select('newtab.background.type', [['daily', 'Daily scenic photo'], ['gradient', 'Gradient'], ['solid', 'Solid color'], ['image', 'My picture'], ['none', 'Plain (theme color)']])) +
-        row('Show Kite logo', '', toggle('newtab.showLogo')) +
-        row('Show clock', '', toggle('newtab.showClock')) +
-        row('Show search box', '', toggle('newtab.showSearch')) +
-        row('Show shortcuts', 'Edit shortcuts directly on the new tab page.', toggle('newtab.showShortcuts'))
-    )
+      'Website defaults',
+      row('Page zoom', 'Ctrl + / Ctrl − still change it per page.', select('pageZoom', zooms)) +
+        row('Text size', 'Default text size for websites that don’t set their own. Applies to newly opened tabs.', range('webFontSize', 12, 24, 1, 'px'))
+    ) +
+    styles()
   )
+}
+
+// ---------- Performance ----------
+function performance() {
+  const p = { ramLimitMB: 0, cpuLimit: 100, sleepAfterMin: 0, unloadPanelsAfterMin: 5, ...(S.perf || {}) }
+  S.perf = p
+  const rams = [[0, 'No limit'], [1024, '1 GB'], [2048, '2 GB'], [3072, '3 GB'], [4096, '4 GB'], [6144, '6 GB'], [8192, '8 GB'], [12288, '12 GB'], [16384, '16 GB']]
+  const mins = (list) => list.map((m) => [m, m === 0 ? 'Never' : m >= 60 ? m / 60 + ' h' : m + ' min'])
+  return (
+    group(
+      'Limits',
+      row('RAM limit', 'Over the limit, the tabs you used least recently go to sleep. They reload when you open them.', select('perf.ramLimitMB', rams)) +
+        row('CPU limit', 'Background tabs get lower priority; over the limit the busiest one is frozen (paused, nothing lost).', range('perf.cpuLimit', 10, 100, 5, '%')) +
+        row('Sleep inactive tabs after', '', select('perf.sleepAfterMin', mins([0, 5, 10, 15, 30, 60, 120])))
+    ) +
+    group(
+      'Background cleanup',
+      row('Unload closed panels after', 'AI chat and web panels you closed. Reopening reloads them; you stay signed in.', select('perf.unloadPanelsAfterMin', mins([0, 1, 5, 15, 30, 60]).map(([v, l]) => [v, v === 0 ? 'Keep loaded' : l])))
+    ) +
+    `<p class="hint" style="padding:0 4px">Live usage per tab is in the Performance panel in the sidebar.</p>`
+  )
+}
+
+// ---------- Keyboard & mouse ----------
+function keys() {
+  return `<h2 class="sub-h">Keyboard shortcuts</h2>` + shortcuts() + `<h2 class="sub-h">Mouse gestures</h2>` + gestures()
 }
 
 // ---------- Shortcuts ----------
@@ -673,6 +760,9 @@ async function importSection() {
 
 // ---------- Profiles ----------
 async function profiles() {
+  return (await profilesOnly()) + (await about())
+}
+async function profilesOnly() {
   const p = await api.call('profiles.list')
   after.push(() => {
     for (const b of document.querySelectorAll('[data-prof]')) b.onclick = () => api.call('profiles.switch', b.dataset.prof)
@@ -724,7 +814,7 @@ onSettings((ns) => {
   render()
 })
 window.addEventListener('hashchange', () => {
-  current = location.hash.slice(1) || 'appearance'
+  current = pick(location.hash.slice(1))
   renderNav()
   render()
 })
