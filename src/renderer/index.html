@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src * data: kite: crx: chrome-extension:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'" />
+    <title>Kite</title>
+    <link rel="stylesheet" href="styles/base.css" />
+    <link rel="stylesheet" href="styles/app.css" />
+    <style id="custom-css"></style>
+  </head>
+  <body class="layout-vertical side-left density-comfortable">
+    <div id="app">
+      <aside id="sidebar">
+        <div class="sb-head" id="sb-head">
+          <button class="icon-btn" id="sb-toggle" title="Toggle sidebar"></button>
+          <div class="spacer hide-mini"></div>
+          <div class="hide-mini" id="sb-controls-slot"></div>
+        </div>
+        <div id="sb-toolbar-slot"></div>
+        <div class="sb-scroll" id="sb-scroll">
+          <div id="pinned"></div>
+          <div class="ws-label" id="ws-label"></div>
+          <div id="vtabs"></div>
+          <button class="new-tab-row" id="vtab-new"></button>
+        </div>
+        <div class="sb-foot">
+          <div id="rail"></div>
+          <div id="workspaces"></div>
+        </div>
+        <div class="resizer" data-resize="sidebar"></div>
+      </aside>
+      <div id="hot-edge"></div>
+
+      <section id="panel">
+        <div class="panel-inner">
+          <div class="panel-head" id="panel-head"></div>
+          <div class="panel-card">
+            <div id="panel-body"></div>
+            <div id="panel-web"></div>
+          </div>
+        </div>
+        <div class="resizer" data-resize="panel"></div>
+      </section>
+
+      <main id="main">
+        <div id="topbar">
+          <button class="icon-btn sb-show" data-sb-show title="Show sidebar"></button>
+          <div id="htabs"><button class="icon-btn htab-new" id="htab-new" title="New tab"></button></div>
+          <div id="top-controls-slot"></div>
+        </div>
+        <div id="toolbar-home"><div id="toolbar"></div></div>
+        <div id="bookmarks-bar" class="hidden"></div>
+        <div id="findbar" class="hidden"></div>
+        <div id="content"></div>
+      </main>
+    </div>
+
+    <div id="overlay"></div>
+    <div id="toasts"></div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>New tab</title>
+    <link rel="stylesheet" href="kite://shared/page.css" />
+    <link rel="stylesheet" href="kite://shared/newtab.css" />
+  </head>
+  <body>
+    <div class="bg" id="bg"></div>
+    <div class="bg-shade" id="shade"></div>
+
+    <main id="main">
+      <div class="head">
+        <div class="brand" id="brand"><img src="kite://shared/kite-logo.svg" alt="" /><span>Kite</span></div>
+        <div class="clock" id="clock"></div>
+        <div class="greet" id="greet"></div>
+      </div>
+      <form id="search">
+        <span id="search-ic"></span>
+        <input id="q" autocomplete="off" spellcheck="false" />
+      </form>
+      <div class="tiles" id="tiles"></div>
+    </main>
+
+    <a class="credit" id="credit" target="_blank"></a>
+    <div class="corner">
+      <button class="chip-btn" id="edit"></button>
+      <button class="chip-btn" id="customize"></button>
+    </div>
+
+    <aside class="drawer" id="drawer">
+      <div class="drawer-head">
+        <h2>Customize</h2>
+        <button class="icon-btn" id="close" title="Close"></button>
+      </div>
+      <div class="drawer-body">
+        <div class="seg" id="bg-type"></div>
+        <div id="bg-options"></div>
+        <div class="sliders" id="sliders">
+          <label>Dim <input type="range" id="dim" min="0" max="0.7" step="0.05" /></label>
+          <label>Blur <input type="range" id="blur" min="0" max="24" step="1" /></label>
+        </div>
+        <h3>Show</h3>
+        <label class="tog">Kite logo <input type="checkbox" class="switch" data-show="showLogo" /></label>
+        <label class="tog">Clock <input type="checkbox" class="switch" data-show="showClock" /></label>
+        <label class="tog">Search box <input type="checkbox" class="switch" data-show="showSearch" /></label>
+        <label class="tog">Shortcuts <input type="checkbox" class="switch" data-show="showShortcuts" /></label>
+        <label class="field">Greeting<input class="input" id="greeting" placeholder="Optional text under the clock" /></label>
+        <a class="more" id="more">More settings</a>
+      </div>
+    </aside>
+
+    <dialog id="add-dlg" class="card">
+      <form id="add-form">
+        <h2>Add shortcut</h2>
+        <input class="input" id="add-url" placeholder="https://example.com" required />
+        <input class="input" id="add-name" placeholder="Name (optional)" />
+        <div class="row"><button type="button" class="btn" id="add-cancel">Cancel</button><button class="btn primary">Add</button></div>
+      </form>
+    </dialog>
+
+    <script type="module" src="kite://shared/newtab.js"></script>
+  </body>
+</html>

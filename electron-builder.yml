@@ -1,0 +1,54 @@
+appId: dev.kite.browser
+productName: Kite
+copyright: Kite
+directories:
+  output: dist
+  buildResources: build
+files:
+  - src/**/*
+  - package.json
+# Stable file names (no version), so "latest" download links never change:
+#   Kite-x86_64.AppImage, kite_amd64.deb, Kite-Setup-x64.exe, Kite-mac-universal.dmg/.zip
+
+linux:
+  syncDesktopName: true
+  artifactName: ${productName}-${arch}.${ext}
+  target: [AppImage, deb]
+  category: Network
+  icon: build/icon.png
+  executableName: kite
+  mimeTypes: [x-scheme-handler/http, x-scheme-handler/https, text/html]
+  desktop:
+    entry:
+      Name: Kite
+      Comment: A browser for you
+      StartupWMClass: Kite
+deb:
+  artifactName: kite_${arch}.${ext}
+  depends: [libnss3, libgtk-3-0, libxss1, libasound2t64 | libasound2]
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  artifactName: ${productName}-Setup-${arch}.${ext}
+nsis:
+  # one-click, per-user install (no admin prompt), like Chrome
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Kite
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: universal
+    - target: zip
+      arch: universal
+  artifactName: ${productName}-mac-${arch}.${ext}
+  # without an Apple Developer ID the app is unsigned; see README
+  identity: null

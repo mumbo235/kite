@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>History</title>
+    <link rel="stylesheet" href="kite://shared/page.css" />
+    <style>
+      .top { display: flex; align-items: center; gap: 10px; margin: 6px 0 22px; }
+      .top .input { flex: 1; height: 38px; font-size: 14px; }
+      .day { margin: 22px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+      .item { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--radius-sm); animation: fade-in 200ms ease; }
+      .item:hover { background: var(--surface-2); }
+      .item img { width: 16px; height: 16px; flex: none; }
+      .item .time { width: 54px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; flex: none; }
+      .item a { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .item .host { color: var(--muted); font-size: 12px; white-space: nowrap; flex: none; }
+      .item .grow { flex: 1; min-width: 0; display: flex; gap: 10px; align-items: baseline; }
+      .item .rm { opacity: 0; }
+      .item:hover .rm { opacity: 1; }
+      .empty { padding: 60px; text-align: center; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>History</h1>
+      <div class="top">
+        <input class="input" id="q" placeholder="Search history" autofocus spellcheck="false" />
+        <button class="btn danger" id="clear">Clear all</button>
+      </div>
+      <div id="list"></div>
+    </div>
+    <script type="module">
+      import { init, api, $, esc } from 'kite://shared/page.js'
+      import { icon } from 'kite://ui/js/icons.js'
+      await init()
+      const day = (ts) => {
+        const d = new Date(ts), t = new Date()
+        if (d.toDateString() === t.toDateString()) return 'Today'
+        if (d.toDateString() === new Date(Date.now() - 864e5).toDateString()) return 'Yesterday'
+        return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      }
+      async function render() {
+        const items = await api.call('history.search', $('#q').value, 1000)
+        let last = ''
+        $('#list').innerHTML = items.length ? items.map((it) => {
+          let host = '', fav = ''
+          try { const u = new URL(it.url); host = u.hostname; fav = 'kite://favicon/?u=' + encodeURIComponent(it.url) } catch {}
+          const d = day(it.time)
+          const head = d !== last ? `<div class="day">${d}</div>` : ''
+          last = d
+          return `${head}<div class="item"><span class="time">${new Date(it.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><img src="${esc(fav)}" alt=""><div class="grow"><a href="${esc(it.url)}">${esc(it.title || it.url)}</a><span class="host">${esc(host)}</span></div><button class="icon-btn sm rm" data-url="${esc(it.url)}" title="Remove">${icon('x')}</button></div>`
+        }).join('') : `<div class="empty">${$('#q').value ? 'No results.' : 'Your history is empty.'}</div>`
+        for (const img of document.querySelectorAll('.item img')) img.onerror = () => (img.style.visibility = 'hidden')
+      }
+      let t
+      $('#q').oninput = () => { clearTimeout(t); t = setTimeout(render, 120) }
+      $('#list').onclick = async (e) => {
+        const b = e.target.closest('[data-url]')
+        if (b) { await api.call('history.remove', b.dataset.url); render() }
+      }
+      $('#clear').onclick = async () => {
+        if (confirm('Clear all browsing history?')) { await api.call('history.clear'); render() }
+      }
+      render()
+    </script>
+  </body>
+</html>

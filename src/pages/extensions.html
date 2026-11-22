@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Extensions</title>
+    <link rel="stylesheet" href="kite://shared/page.css" />
+    <style>
+      .top { display: flex; gap: 8px; margin: 10px 0 24px; flex-wrap: wrap; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+      .ext { display: flex; flex-direction: column; gap: 10px; padding: 16px; animation: slide-up 250ms var(--ease-out) backwards; }
+      .ext .head { display: flex; gap: 12px; align-items: flex-start; }
+      .ext img { width: 36px; height: 36px; border-radius: 8px; flex: none; }
+      .ext .name { font-weight: 600; }
+      .ext .desc { color: var(--muted); font-size: 12px; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .ext .foot { display: flex; align-items: center; gap: 8px; }
+      .ext .id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; }
+      .ext.off { opacity: 0.6; }
+      .empty { padding: 50px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius-lg); }
+      .note { margin-top: 28px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Extensions</h1>
+      <p class="muted">Install Chrome extensions from the Web Store, or load your own unpacked extension folder.</p>
+      <div class="top">
+        <button class="btn primary" id="store">Open Chrome Web Store</button>
+        <button class="btn" id="unpacked">Load unpacked…</button>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="note">Kite supports most Manifest V3 extension APIs (tabs, action popups, context menus, storage, cookies, web requests…). Some Chrome-only features may not work. Toolbar buttons appear next to the address bar.</p>
+    </div>
+    <script type="module">
+      import { init, api, $, esc } from 'kite://shared/page.js'
+      await init()
+      async function render() {
+        const list = await api.call('extensions.list')
+        $('#grid').innerHTML = list.length ? list.map((e, i) => `<div class="card ext ${e.enabled ? '' : 'off'}" style="animation-delay:${i * 30}ms" data-id="${esc(e.id)}">
+          <div class="head"><img src="crx://extension-icon/${esc(e.id)}/64/2" alt=""><div style="flex:1;min-width:0"><div class="name">${esc(e.name)} <span class="muted" style="font-weight:400;font-size:12px">${esc(e.version)}</span></div><div class="desc">${esc(e.description)}</div></div>
+          <input type="checkbox" class="switch" data-toggle ${e.enabled ? 'checked' : ''} title="Enabled"></div>
+          <div class="foot"><span class="id">${esc(e.id)}${e.unpacked ? ' · unpacked' : ''}</span><button class="btn danger" data-remove>Remove</button></div></div>`).join('')
+          : '<div class="empty">No extensions yet. Try uBlock Origin Lite, Dark Reader or Bitwarden from the Web Store.</div>'
+        for (const img of document.querySelectorAll('.ext img')) img.onerror = () => (img.style.visibility = 'hidden')
+      }
+      $('#grid').onclick = async (e) => {
+        const card = e.target.closest('[data-id]')
+        if (!card) return
+        if (e.target.closest('[data-remove]') && confirm('Remove this extension?')) { await api.call('extensions.remove', card.dataset.id); render() }
+      }
+      $('#grid').onchange = async (e) => {
+        const card = e.target.closest('[data-id]')
+        if (card && e.target.matches('[data-toggle]')) { await api.call('extensions.toggle', card.dataset.id); render() }
+      }
+      $('#store').onclick = () => api.call('nav.go', 'https://chromewebstore.google.com/')
+      $('#unpacked').onclick = async () => {
+        try { const n = await api.call('extensions.loadUnpacked'); if (n) render() } catch (err) { alert('Could not load extension: ' + err.message) }
+      }
+      api.on('extensions', render)
+      render()
+    </script>
+  </body>
+</html>

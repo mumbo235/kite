@@ -1,0 +1,2 @@
+{ "id": "forest", "name": "Forest", "order": 6, "dark": true,
+  "colors": { "bg": "#141a16", "surface": "#1a221d", "surface2": "#223027", "surface3": "#2b3b31", "text": "#e3ece5", "muted": "#8aa192", "border": "#25332a", "accent": "#4ade80", "accentText": "#0b1a10", "danger": "#f87171", "success": "#4ade80" } }

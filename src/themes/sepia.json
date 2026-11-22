@@ -1,0 +1,2 @@
+{ "id": "sepia", "name": "Paper", "order": 4, "dark": false,
+  "colors": { "bg": "#ece4d6", "surface": "#f8f3ea", "surface2": "#efe7d9", "surface3": "#e4d9c6", "text": "#3b3226", "muted": "#857762", "border": "#ddd1bd", "accent": "#b5651d", "accentText": "#ffffff", "danger": "#b3261e", "success": "#4d7c0f" } }

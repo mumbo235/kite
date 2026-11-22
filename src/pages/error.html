@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Can't reach this page</title>
+    <link rel="stylesheet" href="kite://shared/page.css" />
+    <style>
+      body { display: grid; place-items: center; }
+      .box { max-width: 520px; padding: 24px; animation: slide-up 300ms var(--ease-out); }
+      .big { margin-bottom: 14px; color: var(--muted); }
+      .big .icon { width: 44px; height: 44px; stroke-width: 1.4; }
+      code { font-size: 12px; color: var(--muted); }
+      .row { display: flex; gap: 8px; margin-top: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <div class="big" id="ico"></div>
+      <h1 id="title">This page can’t be reached</h1>
+      <p class="muted" id="desc"></p>
+      <code id="code"></code>
+      <div class="row"><button class="btn primary" id="retry">Try again</button><button class="btn" id="search">Search instead</button></div>
+    </div>
+    <script type="module">
+      import { init, api, $ } from 'kite://shared/page.js'
+      import { icon } from 'kite://ui/js/icons.js'
+      await init()
+      const p = new URLSearchParams(location.search)
+      const u = p.get('u') || ''
+      const code = +p.get('code')
+      let host = u
+      try { host = new URL(u).host } catch {}
+      document.title = host
+      const msgs = {
+        '-105': `We couldn't find ${host}. Check the spelling or your connection.`,
+        '-106': 'You appear to be offline.',
+        '-102': `${host} refused to connect.`,
+        '-118': `${host} took too long to respond.`,
+        '-200': `The certificate for ${host} is not valid. Your connection is not private.`,
+        '-201': `The certificate for ${host} has expired or is not yet valid.`,
+        '-202': `The certificate for ${host} is not trusted.`,
+      }
+      $('#desc').textContent = msgs[code] || `Something went wrong while loading ${host}.`
+      const cert = code <= -200 && code > -300
+      $('#ico').innerHTML = icon(cert ? 'unlock' : code === -106 ? 'wifiOff' : 'alert')
+      if (cert) $('#title').textContent = 'Your connection isn’t private'
+      $('#code').textContent = `${p.get('d') || ''} (${code})`
+      $('#retry').onclick = () => location.replace(u)
+      $('#search').onclick = () => api.call('nav.go', host.replace(/^www\./, '') + ' ')
+    </script>
+  </body>
+</html>

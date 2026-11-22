@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#bg)"/>
+  <!-- kite: four shaded faces -->
+  <polygon points="64,18 95,48 64,48" fill="#ffffff"/>
+  <polygon points="64,18 33,48 64,48" fill="#e8f4ff"/>
+  <polygon points="33,48 64,88 64,48" fill="#cde4fc"/>
+  <polygon points="95,48 64,88 64,48" fill="#bad8fa"/>
+  <!-- tail with bows -->
+  <path d="M64 88 C 58 96, 70 100, 64 108 S 66 116, 62 120" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M57 96 l7 2 l-7 2 z M71 96 l-7 2 l7 2 z" fill="#ffffff"/>
+  <path d="M57 108 l7 2 l-7 2 z M71 108 l-7 2 l7 2 z" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,2 @@
+{ "id": "nord", "name": "Nord", "order": 3, "dark": true,
+  "colors": { "bg": "#272c36", "surface": "#2e3440", "surface2": "#3b4252", "surface3": "#434c5e", "text": "#eceff4", "muted": "#9aa3b5", "border": "#3b4252", "accent": "#88c0d0", "accentText": "#1f242d", "danger": "#bf616a", "success": "#a3be8c" } }

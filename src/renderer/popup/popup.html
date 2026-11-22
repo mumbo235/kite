@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src * data: kite:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <style>
+      html, body { background: transparent; overflow: hidden; user-select: none; }
+      /* padding leaves room for the drop shadow inside the transparent view */
+      body { padding: 2px 14px 18px; }
+      .pop { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+      .pop.enter { animation: pop-in var(--dur) var(--ease-out); }
+      .list { padding: 6px; }
+      .sugg { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--radius-sm); cursor: default; }
+      .sugg.sel { background: var(--accent-soft); }
+      .sugg:hover:not(.sel) { background: var(--surface-2); }
+      .ic { width: 16px; height: 16px; display: grid; place-items: center; color: var(--muted); flex: none; }
+      .ic img { width: 16px; height: 16px; border-radius: 3px; }
+      .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+      .t b { font-weight: 650; }
+      .u { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; font-size: 12px; }
+      .tag { font-size: 11px; color: var(--muted); flex: none; }
+    </style>
+  </head>
+  <body>
+    <div class="pop"><div class="list" id="list"></div></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,2 @@
+{ "id": "dark", "name": "Dark", "order": 2, "dark": true,
+  "colors": { "bg": "#141417", "surface": "#1c1c20", "surface2": "#26262b", "surface3": "#303036", "text": "#ececef", "muted": "#8e8e98", "border": "#2c2c32", "accent": "#5b8def", "accentText": "#ffffff", "danger": "#f05252", "success": "#34c46b" } }
