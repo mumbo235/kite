@@ -67,13 +67,19 @@ function addressBar() {
   addrInput = el.querySelector('input')
   addrInput.addEventListener('focus', () => {
     el.classList.add('focus')
+    // Focus coming straight back (e.g. the dropdown appearing briefly took
+    // it) must not select everything, or your next letter replaces what you
+    // typed. Only a fresh click/shortcut into the bar selects all.
+    if (editing && Date.now() - blurredAt < 400) return
     editing = true
     requestAnimationFrame(() => addrInput.select())
   })
+  let blurredAt = 0
   addrInput.addEventListener('blur', () => {
-    el.classList.remove('focus', 'typing')
+    blurredAt = Date.now()
     setTimeout(() => {
       if (document.activeElement !== addrInput || !document.hasFocus()) {
+        el.classList.remove('focus', 'typing')
         editing = false
         closeSuggestions()
         updateToolbarState(true)

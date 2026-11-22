@@ -733,6 +733,12 @@ class Browser {
     this.popup.setBackgroundColor('#00000000')
     this.popup.setVisible(false)
     this.popup.webContents.loadFile(POPUP_HTML)
+    // The dropdown never needs the keyboard (clicks are handled on mousedown),
+    // but showing a view can hand it focus, which kicked you out of the
+    // address bar mid-typing. Give focus straight back to the browser UI.
+    this.popup.webContents.on('focus', () => {
+      if (this.ui && !this.ui.webContents.isDestroyed()) this.ui.webContents.focus()
+    })
     this.popupReady = new Promise((r) => this.popup.webContents.once('did-finish-load', r))
     this.win.contentView.addChildView(this.popup)
     return this.popup
@@ -745,8 +751,28 @@ class Browser {
     this.popupRect = { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), maxHeight: Math.round(rect.maxHeight || 500) }
     p.webContents.send('popup:render', { html, vars, fresh })
     if (fresh || !p.getVisible()) {
+      const keep = this.uiFocusGuard()
       this.win.contentView.addChildView(p) // keep on top
       if (this.overlay || this.lifted) this.win.contentView.addChildView(this.ui)
+      keep()
+    }
+  }
+
+  // Re-stacking or showing the dropdown view moves keyboard focus into it,
+  // which kicked you out of the address bar mid-typing. Remember whether the
+  // UI had focus and give it straight back.
+  uiFocusGuard() {
+    // The dropdown is only ever opened from the browser UI (typing in the
+    // address bar, clicking Downloads), so the UI should keep the keyboard.
+    // (Checking isFocused() isn't enough: creating the view the first time
+    // already steals focus before we get here.)
+    const had = this.ui && !this.ui.webContents.isDestroyed() && (this.ui.webContents.isFocused() || this.win.isFocused())
+    return () => {
+      if (!had) return
+      const back = () => !this.ui.webContents.isDestroyed() && !this.ui.webContents.isFocused() && this.ui.webContents.focus()
+      back()
+      setImmediate(back)
+      setTimeout(back, 30)
     }
   }
 
@@ -754,7 +780,11 @@ class Browser {
     if (!this.popup || !this.popupRect) return
     const r = this.popupRect
     this.popup.setBounds({ x: r.x, y: r.y, width: r.width, height: Math.min(height, r.maxHeight) })
-    this.popup.setVisible(true)
+    if (!this.popup.getVisible()) {
+      const keep = this.uiFocusGuard()
+      this.popup.setVisible(true)
+      keep()
+    }
   }
 
   hidePopup() {
