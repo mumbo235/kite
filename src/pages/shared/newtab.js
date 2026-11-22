@@ -1,6 +1,7 @@
 // kite://newtab — clock, search, shortcuts and a customizable background.
 import { init, api, $, esc, onSettings } from 'kite://shared/page.js'
 import { icon } from 'kite://ui/js/icons.js'
+import { WIDGETS, setupWidgets, renderWidgets } from 'kite://shared/widgets.js'
 
 // Gradient presets. `light: true` means dark text reads better on top.
 export const GRADIENTS = {
@@ -186,6 +187,7 @@ function render() {
   $('#greet').textContent = greetingText(n)
   $('#clock').dataset.style = n.clockStyle || 'thin'
   tick()
+  renderWidgets()
   $('#q').placeholder = `Search ${(engines[s.searchEngine] || engines.google).name} or type a URL`
   $('#tiles').innerHTML =
     n.shortcuts
@@ -207,6 +209,9 @@ function syncDrawer() {
   const bg = bgOf()
   $('#bg-type').innerHTML = TYPES.map(([v, l]) => `<button data-t="${v}" class="${bg.type === v ? 'on' : ''}">${l}</button>`).join('')
   for (const c of document.querySelectorAll('[data-show]')) c.checked = !!s.newtab[c.dataset.show]
+  for (const c of document.querySelectorAll('[data-widget]')) c.checked = !!s.newtab.widgets?.[c.dataset.widget]
+  const analog = s.newtab.clockStyle === 'analog'
+  $('#clock-kind').innerHTML = `<button data-k="digital" class="${analog ? '' : 'on'}">Digital</button><button data-k="analog" class="${analog ? 'on' : ''}">Analog</button>`
   if (document.activeElement !== $('#greeting')) $('#greeting').value = s.newtab.greetingMode === 'custom' ? s.newtab.greeting || '' : ''
   if (document.activeElement !== $('#yourname')) $('#yourname').value = s.newtab.name || ''
   $('#dim').value = bg.dim
@@ -286,6 +291,16 @@ $('#bg-options').addEventListener('submit', (e) => {
 $('#dim').oninput = (e) => setBg({ dim: +e.target.value })
 $('#blur').oninput = (e) => setBg({ blur: +e.target.value })
 for (const c of document.querySelectorAll('[data-show]')) c.onchange = () => setNewtab({ [c.dataset.show]: c.checked })
+$('#widget-toggles').innerHTML = Object.entries(WIDGETS)
+  .map(([k, name]) => `<label class="tog">${name} <input type="checkbox" class="switch" data-widget="${k}" /></label>`)
+  .join('')
+for (const c of document.querySelectorAll('[data-widget]')) c.onchange = () => setNewtab({ widgets: { ...(s.newtab.widgets || {}), [c.dataset.widget]: c.checked } })
+$('#clock-kind').onclick = (e) => {
+  const b = e.target.closest('[data-k]')
+  if (!b) return
+  const want = b.dataset.k === 'analog' ? 'analog' : s.newtab.clockStyle === 'analog' ? s.newtab.lastDigitalStyle || 'thin' : s.newtab.clockStyle
+  setNewtab({ clockStyle: want, ...(want === 'analog' && s.newtab.clockStyle !== 'analog' ? { lastDigitalStyle: s.newtab.clockStyle } : {}) })
+}
 $('#greeting').onchange = (e) => {
   const v = e.target.value.trim()
   setNewtab({ greeting: v, greetingMode: v ? 'custom' : s.newtab.name ? 'time' : 'off' })
@@ -317,14 +332,43 @@ function greetingText(n) {
   return n.name ? `${part}, ${n.name}` : part
 }
 
+// Analog clock face: drawn once, then only the hands turn
+const ANALOG = `<svg class="analog" viewBox="0 0 200 200" aria-hidden="true">
+  <circle class="face" cx="100" cy="100" r="94"/>
+  ${[...Array(60)].map((_, i) => `<line class="${i % 5 ? 'min' : 'hr'}" x1="100" y1="${i % 5 ? 12 : 13}" x2="100" y2="${i % 5 ? 17 : 26}" transform="rotate(${i * 6} 100 100)"/>`).join('')}
+  <line class="hand h" x1="100" y1="112" x2="100" y2="54"/>
+  <line class="hand m" x1="100" y1="116" x2="100" y2="30"/>
+  <line class="hand s" x1="100" y1="124" x2="100" y2="22"/>
+  <circle class="pin" cx="100" cy="100" r="4.5"/>
+</svg>`
+function tickAnalog(now, showSeconds) {
+  const el = $('#clock')
+  if (!el.querySelector('.analog')) el.innerHTML = ANALOG
+  const sec = now.getSeconds()
+  const min = now.getMinutes() + sec / 60
+  const hr = (now.getHours() % 12) + min / 60
+  el.querySelector('.h').setAttribute('transform', `rotate(${hr * 30} 100 100)`)
+  el.querySelector('.m').setAttribute('transform', `rotate(${min * 6} 100 100)`)
+  const s = el.querySelector('.s')
+  s.style.display = showSeconds ? '' : 'none'
+  s.setAttribute('transform', `rotate(${sec * 6} 100 100)`)
+  el.title = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
 function tick() {
   const n = s.newtab
   const now = new Date()
+  if (n.clockStyle === 'analog') {
+    tickAnalog(now, n.showSeconds)
+  }
   const opts = { hour: n.clockFormat === '24' ? '2-digit' : 'numeric', minute: '2-digit' }
   if (n.showSeconds) opts.second = '2-digit'
   if (n.clockFormat === '12') opts.hour12 = true
   if (n.clockFormat === '24') opts.hourCycle = 'h23'
-  $('#clock').textContent = now.toLocaleTimeString([], opts)
+  if (n.clockStyle !== 'analog') {
+    $('#clock').title = ''
+    $('#clock').textContent = now.toLocaleTimeString([], opts)
+  }
   const date = n.showDate ? now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) : ''
   if ($('#date').textContent !== date) $('#date').textContent = date
   // the time-of-day greeting changes on its own
@@ -373,6 +417,17 @@ $('#edit').onclick = () => {
   $('#edit').innerHTML = editLabel(on)
 }
 $('#customize').innerHTML = `${icon('sliders')} Customize`
+
+setupWidgets(
+  $('#widgets'),
+  () => s,
+  (patch) => {
+    // widgets save their own data; redraw only the widgets, not the page
+    s = { ...s, newtab: { ...s.newtab, ...patch } }
+    renderWidgets()
+    return api.call('settings.set', { newtab: s.newtab })
+  }
+)
 
 onSettings((ns) => {
   s = ns

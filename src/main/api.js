@@ -216,6 +216,10 @@ function registerApi(ctx) {
     'bg.custom': () => ctx.backgrounds.custom(),
     'bg.addCustom': () => ctx.backgrounds.addCustom(),
     'bg.removeCustom': (file) => ctx.backgrounds.removeCustom(file),
+    'widgets.weather': (opts) => require('./widgets').weather(opts),
+    'widgets.findPlace': (q) => require('./widgets').findPlace(q),
+    'widgets.news': (opts) => require('./widgets').news(opts),
+    'widgets.feeds': () => require('./widgets').feeds(),
 
     'app.info': () => ({
       version: app.getVersion(),

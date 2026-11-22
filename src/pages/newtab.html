@@ -22,6 +22,7 @@
         <input id="q" autocomplete="off" spellcheck="false" />
       </form>
       <div class="tiles" id="tiles"></div>
+      <div class="widgets" id="widgets"></div>
     </main>
 
     <a class="credit" id="credit" target="_blank"></a>
@@ -47,6 +48,9 @@
         <label class="tog">Clock <input type="checkbox" class="switch" data-show="showClock" /></label>
         <label class="tog">Search box <input type="checkbox" class="switch" data-show="showSearch" /></label>
         <label class="tog">Shortcuts <input type="checkbox" class="switch" data-show="showShortcuts" /></label>
+        <div class="tog">Clock style <div class="seg mini" id="clock-kind"></div></div>
+        <h3>Widgets</h3>
+        <div id="widget-toggles"></div>
         <label class="field">Your name<input class="input" id="yourname" placeholder="Shows “Good morning, Name”" /></label>
         <label class="field">Or your own greeting<input class="input" id="greeting" placeholder="Optional text under the clock" /></label>
         <a class="more" id="more">More settings</a>

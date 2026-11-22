@@ -135,12 +135,19 @@ const SETTINGS_DEFAULTS = {
     clockFormat: 'auto', // auto | 12 | 24
     showSeconds: false,
     showDate: false,
-    clockStyle: 'thin', // thin | bold | mono | serif
+    clockStyle: 'thin', // thin | bold | mono | serif | analog
     showLogo: true,
     showClock: true,
     showSearch: true,
     showShortcuts: true,
     greeting: '',
+    // Widgets shown below the shortcuts, in this order
+    widgets: { weather: false, news: false, calendar: false, notes: false, todo: false, quote: false },
+    widgetOrder: ['weather', 'calendar', 'news', 'todo', 'notes', 'quote'],
+    weather: { place: null, units: 'auto' }, // place: { name, region, country, lat, lon }; units: auto | c | f
+    news: { feed: 'bbc', url: '', count: 6 },
+    notes: '',
+    todos: [], // [{ text, done }]
     shortcuts: [
       { title: 'YouTube', url: 'https://youtube.com' },
       { title: 'GitHub', url: 'https://github.com' },

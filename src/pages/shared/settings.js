@@ -453,7 +453,7 @@ function newtab() {
       'Clock',
       row('Show clock', '', toggle('newtab.showClock')) +
         row('Format', '', seg('newtab.clockFormat', [['auto', 'Automatic'], ['12', '12-hour'], ['24', '24-hour']])) +
-        row('Style', '', seg('newtab.clockStyle', [['thin', 'Thin'], ['bold', 'Bold'], ['mono', 'Mono'], ['serif', 'Serif']])) +
+        row('Style', '', seg('newtab.clockStyle', [['thin', 'Thin'], ['bold', 'Bold'], ['mono', 'Mono'], ['serif', 'Serif'], ['analog', 'Analog']])) +
         row('Show seconds', '', toggle('newtab.showSeconds')) +
         row('Show the date', '', toggle('newtab.showDate'))
     ) +
@@ -463,6 +463,18 @@ function newtab() {
         row('Kite logo', '', toggle('newtab.showLogo')) +
         row('Search box', '', toggle('newtab.showSearch')) +
         row('Shortcuts', 'Edit them directly on the new tab page.', toggle('newtab.showShortcuts'))
+    ) +
+    group(
+      'Widgets',
+      row('Weather', 'Pick your city on the new tab page. Forecasts come from Open-Meteo; only the place you pick is sent.', toggle('newtab.widgets.weather')) +
+        row('Temperature', '', seg('newtab.weather.units', [['auto', 'Automatic'], ['c', '°C'], ['f', '°F']])) +
+        row('Calendar', 'This month at a glance.', toggle('newtab.widgets.calendar')) +
+        row('News', 'Headlines from a news site’s feed.', toggle('newtab.widgets.news')) +
+        row('News source', 'Pick “Your own feed” to paste any RSS or Atom feed on the new tab page.', select('newtab.news.feed', [['bbc', 'BBC News'], ['bbcworld', 'BBC World'], ['npr', 'NPR'], ['guardian', 'The Guardian'], ['hn', 'Hacker News'], ['verge', 'The Verge'], ['ars', 'Ars Technica'], ['espn', 'ESPN'], ['custom', 'Your own feed']])) +
+        row('Headlines', '', select('newtab.news.count', [3, 4, 5, 6, 8, 10].map((n) => [n, String(n)]))) +
+        row('To-do list', '', toggle('newtab.widgets.todo')) +
+        row('Notes', 'A scratchpad that saves as you type.', toggle('newtab.widgets.notes')) +
+        row('Quote of the day', '', toggle('newtab.widgets.quote'))
     )
   )
 }
