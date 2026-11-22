@@ -207,7 +207,7 @@ function registerApi(ctx) {
 
     // import / export
     'import.sources': () => require('./importer').findSources(),
-    'import.run': (id, opts) => require('./importer').runImport(ctx, id, opts),
+    'import.run': (id, opts) => require('./importer').runImport(ctx, id, opts).finally(() => setTimeout(ctx.freeMemory, 2000)),
     'import.html': (opts) => require('./importer').importHtmlFile(ctx, opts),
     'export.html': () => require('./importer').exportHtml(ctx),
 

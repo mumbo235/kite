@@ -257,6 +257,15 @@ app.whenReady().then(async () => {
   await ctx.extensions.init(ctx.tabSession)
   ctx.browser = new Browser(ctx).create()
   ctx.perf = new Performance(ctx)
+  // Startup (reading settings, history, filter lists) leaves ~100 MB of
+  // garbage in the main process that V8 would otherwise keep for a long time.
+  ctx.freeMemory = () => {
+    try {
+      require('v8').setFlagsFromString('--expose-gc')
+      require('vm').runInNewContext('gc')()
+    } catch {}
+  }
+  setTimeout(ctx.freeMemory, 15000)
   require('./debug').setupDebug(ctx)
   ctx.adblock.init(ctx.tabSession) // loads in the background
 

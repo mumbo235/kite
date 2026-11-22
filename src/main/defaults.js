@@ -140,7 +140,9 @@ const SETTINGS_DEFAULTS = {
   doNotTrack: true,
 
   // Performance (0 = no limit)
-  perf: { ramLimitMB: 0, cpuLimit: 100, sleepAfterMin: 0 },
+  // unloadPanelsAfterMin: closed AI / web panels are unloaded after this many
+  // minutes (0 = keep them loaded)
+  perf: { ramLimitMB: 0, cpuLimit: 100, sleepAfterMin: 0, unloadPanelsAfterMin: 5 },
 
   // Input
   shortcuts: DEFAULT_SHORTCUTS,

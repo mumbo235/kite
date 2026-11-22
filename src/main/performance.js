@@ -75,6 +75,12 @@ class Performance {
 
   tick() {
     if (!this.b?.win) return
+    // No limits set and the panel closed: nothing needs measuring. (Run one
+    // last time after limits are switched off, to undo lowered priorities.)
+    const c = this.cfg
+    const active = this.watchers > 0 || c.ramLimitMB > 0 || c.cpuLimit < 100 || c.sleepAfterMin > 0
+    if (!active && !this.wasActive) return
+    this.wasActive = active
     let s
     try {
       s = this.sample()

@@ -38,6 +38,36 @@ class Browser {
     this.htmlFullscreen = null
     this.emitTimer = null
     this.workspace = ctx.data.get('session').workspace || 'default'
+    this.panelHiddenAt = new Map() // panel key -> when it was closed
+    // Free memory nothing is using: closed side panels and background
+    // kite:// pages (new tab, settings...) that reload instantly anyway.
+    this.janitor = setInterval(() => this.tidy(), 20000)
+  }
+
+  tidy() {
+    if (!this.win) return
+    const now = Date.now()
+    const perf = this.settings.perf || {}
+    const panelMin = perf.unloadPanelsAfterMin ?? 5
+    if (panelMin > 0) {
+      for (const [key, since] of this.panelHiddenAt) {
+        const v = this.panels.get(key)
+        if (!v || key === this.activePanel) {
+          this.panelHiddenAt.delete(key)
+          continue
+        }
+        // keep a web panel that's playing music
+        if (!v.webContents.isDestroyed() && v.webContents.isCurrentlyAudible()) continue
+        if (now - since > panelMin * 60000) {
+          this.destroyPanel(key)
+          this.panelHiddenAt.delete(key)
+        }
+      }
+    }
+    for (const t of this.tabs.values()) {
+      if (!t.view || t.id === this.activeId || t.wc.isDestroyed()) continue
+      if (isInternal(t.wc.getURL()) && now - (t.hiddenAt || now) > 60000) this.sleep(t.id)
+    }
   }
 
   get settings() {
@@ -110,6 +140,7 @@ class Browser {
       for (const v of this.panels.values()) if (!v.webContents.isDestroyed()) v.webContents.close()
       if (this.popup && !this.popup.webContents.isDestroyed()) this.popup.webContents.close()
       if (!this.ui.webContents.isDestroyed()) this.ui.webContents.close()
+      clearInterval(this.janitor)
       require('electron').app.quit()
     })
 
@@ -202,6 +233,7 @@ class Browser {
       view: null,
       wc: null,
       lastActive: Date.now(),
+      hiddenAt: Date.now(), // for tabs opened in the background
     }
     this.tabs.set(id, tab)
     let index = opts.index ?? this.order.length
@@ -349,6 +381,8 @@ class Browser {
     const tab = this.tabs.get(id)
     if (!tab) return
     if (tab.workspace !== this.workspace) this.setWorkspace(tab.workspace, { noActivate: true })
+    const prev = this.tabs.get(this.activeId)
+    if (prev && prev !== tab) prev.hiddenAt = Date.now()
     this.activeId = id
     tab.lastActive = Date.now()
     if (tab.frozen) this.ctx.perf?.unfreeze(tab)
@@ -604,12 +638,15 @@ class Browser {
       wc.loadURL(url).catch(() => {})
       this.panels.set(key, view)
     }
+    if (this.activePanel && this.activePanel !== key) this.panelHiddenAt.set(this.activePanel, Date.now())
+    this.panelHiddenAt.delete(key)
     this.activePanel = key
     this.layout()
     this.emitTabs()
   }
 
   closePanel() {
+    if (this.activePanel) this.panelHiddenAt.set(this.activePanel, Date.now())
     this.activePanel = null
     this.layout()
     this.emitTabs()
