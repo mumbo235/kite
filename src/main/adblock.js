@@ -4,6 +4,24 @@ const fs = require('fs/promises')
 const path = require('path')
 const { hostOf } = require('./urls')
 
+// Sign-in services: never block their requests. Their "telemetry" endpoints
+// feed fraud checks (e.g. Apple's device verification fails with 503s when
+// appleauth/jslog is blocked).
+const SIGN_IN_HOSTS = ['idmsa.apple.com', 'appleid.apple.com', 'gsa.apple.com', 'signin.apple.com', 'accounts.google.com', 'accounts.youtube.com', 'login.microsoftonline.com', 'login.live.com', 'login.microsoft.com', 'account.live.com', 'auth0.com', 'okta.com', 'duosecurity.com', 'id.atlassian.com', 'login.yahoo.com']
+// Sites whose own first-party requests shouldn't be blocked while you're on
+// them (account pages that break when their analytics are cut).
+const FIRST_PARTY_SITES = [['apple.com', 'icloud.com', 'cdn-apple.com', 'apple-cloudkit.com']]
+
+const under = (host, d) => host === d || host.endsWith('.' + d)
+
+function exempt(reqUrl, pageUrl) {
+  const req = hostOf(reqUrl)
+  if (!req) return false
+  if (SIGN_IN_HOSTS.some((d) => under(req, d))) return true
+  const page = hostOf(pageUrl)
+  return FIRST_PARTY_SITES.some((family) => family.some((d) => under(page, d)) && family.some((d) => under(req, d)))
+}
+
 class AdBlock {
   constructor(ctx) {
     this.ctx = ctx
@@ -31,7 +49,9 @@ class AdBlock {
       const before = this.blocker.onBeforeRequest
       this.blocker.onBeforeRequest = (details, cb) => {
         const wc = details.webContentsId ? webContents.fromId(details.webContentsId) : null
-        if (wc && !wc.isDestroyed() && this.allowed(wc.getURL())) return cb({})
+        const page = wc && !wc.isDestroyed() ? wc.getURL() : details.referrer || ''
+        if (wc && !wc.isDestroyed() && this.allowed(page)) return cb({})
+        if (exempt(details.url, page) || exempt(details.url, details.frame?.url || '')) return cb({})
         return before(details, cb)
       }
       const cosmetic = this.blocker.onInjectCosmeticFilters
