@@ -256,7 +256,7 @@ const RENDER = {
                 .join('')
           )
           .join('')
-      : `<div class="p-empty">${icon('star')}<p>No bookmarks yet.<br>Press <span class="kbd">${esc(S.settings.shortcuts.bookmarkPage)}</span> on any page.</p></div>`
+      : `<div class="p-empty">${icon('bookmark')}<p>No bookmarks yet.<br>Press <span class="kbd">${esc(S.settings.shortcuts.bookmarkPage)}</span> on any page.</p></div>`
     fixBrokenFavicons(el)
     el.onclick = async (e) => {
       const del = e.target.closest('[data-del]')

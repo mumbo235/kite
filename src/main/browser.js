@@ -740,6 +740,7 @@ class Browser {
     // but showing a view can hand it focus, which kicked you out of the
     // address bar mid-typing. Give focus straight back to the browser UI.
     this.popup.webContents.on('focus', () => {
+      if (this.popupMode === 'form') return // the bookmark box needs the keyboard
       if (this.ui && !this.ui.webContents.isDestroyed()) this.ui.webContents.focus()
     })
     this.popupReady = new Promise((r) => this.popup.webContents.once('did-finish-load', r))
@@ -765,6 +766,14 @@ class Browser {
   // which kicked you out of the address bar mid-typing. Remember whether the
   // UI had focus and give it straight back.
   uiFocusGuard() {
+    // a form in the dropdown (the bookmark box) takes the keyboard instead
+    if (this.popupMode === 'form') {
+      return () => {
+        const give = () => this.popup && !this.popup.webContents.isDestroyed() && this.popup.webContents.focus()
+        give()
+        setTimeout(give, 30)
+      }
+    }
     // The dropdown is only ever opened from the browser UI (typing in the
     // address bar, clicking Downloads), so the UI should keep the keyboard.
     // (Checking isFocused() isn't enough: creating the view the first time

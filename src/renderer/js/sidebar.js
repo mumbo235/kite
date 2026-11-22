@@ -6,7 +6,7 @@ import { fixBrokenFavicons } from './tabs.js'
 
 export const TOOLS = {
   ai: { icon: 'sparkles', title: 'AI chat' },
-  bookmarks: { icon: 'star', title: 'Bookmarks' },
+  bookmarks: { icon: 'bookmark', title: 'Bookmarks' },
   history: { icon: 'history', title: 'History' },
   downloads: { icon: 'download', title: 'Downloads' },
   notes: { icon: 'note', title: 'Notes' },

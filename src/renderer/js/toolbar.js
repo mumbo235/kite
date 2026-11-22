@@ -2,6 +2,7 @@
 import { S, api, $, h, esc, activeTab, setOverlay } from './main.js'
 import { icon } from './icons.js'
 import { fixBrokenFavicons } from './tabs.js'
+import { bookmarkPick, bookmarkBoxOpen, closeBookmarkBox } from './bookmarksbar.js'
 
 const BUTTONS = {
   back: { icon: 'back', title: 'Back', action: 'back' },
@@ -9,7 +10,7 @@ const BUTTONS = {
   reload: { icon: 'reload', title: 'Reload', action: 'reload' },
   home: { icon: 'home', title: 'Home', action: 'home' },
   shield: { icon: 'shieldCheck', title: 'Ad & tracker blocker' },
-  bookmark: { icon: 'star', title: 'Bookmark this page', action: 'bookmarkPage' },
+  bookmark: { icon: 'bookmark', title: 'Bookmark this page', action: 'bookmarkPage' },
   downloads: { icon: 'download', title: 'Downloads', action: 'openDownloads' },
   palette: { icon: 'command', title: 'Command palette', action: 'commandPalette' },
   menu: { icon: 'dots', title: 'Menu' },
@@ -443,7 +444,7 @@ let typed = ''
 let completed = null // { host, url } when the input shows an inline completion
 
 const favURL = (url) => (/^https?:/.test(url || '') ? 'kite://favicon/?u=' + encodeURIComponent(url) : '')
-const ICON_FOR = { bookmark: 'star', history: 'history', search: 'search', tab: 'layers' }
+const ICON_FOR = { bookmark: 'bookmark', history: 'history', search: 'search', tab: 'layers' }
 
 async function suggest(text, allowComplete) {
   const id = ++reqId
@@ -483,7 +484,7 @@ function rowIcon(s) {
   return fav ? `<img src="${esc(fav)}" data-fallback="${esc(fallback)}" alt="">` : fallback
 }
 
-function cssVars() {
+export function cssVars() {
   const cs = getComputedStyle(document.documentElement)
   const out = {}
   for (const k of ['--bg', '--surface', '--surface-2', '--surface-3', '--text', '--muted', '--border', '--accent', '--accent-text', '--accent-soft', '--radius', '--font', '--fs', '--speed', '--shadow']) {
@@ -522,7 +523,10 @@ function drawSuggestions(fresh) {
 }
 
 window.kite.on('popup-pick', ({ index, newTab }) => {
-  if (typeof index === 'string') return index.startsWith('shield:') ? shieldAction(index.slice(7)) : downloadAction(index)
+  if (typeof index === 'string') {
+    if (bookmarkBoxOpen()) return bookmarkPick(index)
+    return index.startsWith('shield:') ? shieldAction(index.slice(7)) : downloadAction(index)
+  }
   const s = suggestions[index]
   if (!s) return
   if (s.type === 'go') go(s.url, newTab)
@@ -664,11 +668,13 @@ window.kite.on('popup-closed', () => {
   dlAnchor?.classList.remove('on')
   shOpen = false
   shAnchor?.classList.remove('on')
+  closeBookmarkBox(true)
 })
 // clicking anywhere else in the browser UI, or Escape, closes them
 document.addEventListener('mousedown', (e) => {
   if (dlOpen && !e.target.closest('[data-tb="downloads"]')) closeDownloads()
   if (shOpen && !e.target.closest('[data-tb="shield"]')) closeShield()
+  if (bookmarkBoxOpen() && !e.target.closest('[data-tb="bookmark"]')) closeBookmarkBox()
 })
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && dlOpen) closeDownloads()
