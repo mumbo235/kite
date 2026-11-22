@@ -16,6 +16,7 @@ const { registerApi } = require('./api')
 const { Backgrounds } = require('./backgrounds')
 const { Favicons } = require('./favicons')
 const { Performance } = require('./performance')
+const { SessionCookies } = require('./sessioncookies')
 
 app.setName('Kite')
 // Testing aid: run a fully separate instance with its own data folder.
@@ -277,6 +278,10 @@ app.whenReady().then(async () => {
 
   // Extensions must be ready before tabs are created so they can attach.
   await ctx.extensions.init(ctx.tabSession)
+  // bring back sign-ins kept in session cookies before any page loads
+  ctx.sessionCookies = new SessionCookies(ctx)
+  await ctx.sessionCookies.restore()
+  ctx.sessionCookies.startAutosave()
   ctx.browser = new Browser(ctx).create()
   ctx.perf = new Performance(ctx)
   // Startup (reading settings, history, filter lists) leaves ~100 MB of
@@ -305,10 +310,19 @@ app.whenReady().then(async () => {
   if (startUrl) ctx.browser.newTab(startUrl)
 
   let cleaned = false
+  let cookiesSaved = false
   app.on('before-quit', async (e) => {
     ctx.browser?.saveSession(true)
     ctx.settings.flush()
     ctx.data.flush()
+    // keep session cookies (and make sure all cookies reach the disk)
+    if (!cookiesSaved) {
+      e.preventDefault()
+      cookiesSaved = true
+      await ctx.sessionCookies.save()
+      await Promise.all([ctx.tabSession, ctx.panelSession].map((s) => s.cookies.flushStore().catch(() => {})))
+      return app.quit()
+    }
     if (ctx.settings.data.clearOnExit && !cleaned) {
       e.preventDefault()
       cleaned = true
@@ -323,6 +337,10 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => app.quit())
+
+// Shutdown signals (logging out, system shutdown, `kill`) quit cleanly, so
+// open tabs and sign-ins are saved instead of the process just dying.
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) process.on(sig, () => app.quit())
 
 // Every tab, side panel and sign-in popup gets the browser identity.
 const webSessions = new Set() // the sessions web pages run in (tabs, panels)
