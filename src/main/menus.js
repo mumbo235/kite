@@ -189,6 +189,52 @@ class Menus {
     this.popup(this.build(items), x, y)
   }
 
+  // Right-click on an extension's toolbar button (or its row in the
+  // Extensions menu): pin, turn off, remove.
+  extension(id, x, y) {
+    const e = this.ctx.extensions
+    const ext = e.list().find((v) => v.id === id)
+    if (!ext) return
+    const own = ext.enabled ? e.ownMenuItems(id) : []
+    const options = ext.enabled ? e.optionsURL(id) : null
+    const items = [
+      { label: ext.name, click: () => this.b.newTab(e.homepage(id)) },
+      { type: 'separator' },
+      ...own,
+      own.length ? { type: 'separator' } : null,
+      { label: 'Options', enabled: !!options, click: () => this.b.newTab(options) },
+      { label: ext.pinned ? 'Unpin from toolbar' : 'Pin to toolbar', enabled: ext.enabled, click: () => e.setPinned(id, !ext.pinned) },
+      { label: ext.enabled ? 'Turn off' : 'Turn on', click: () => e.toggle(id) },
+      { label: 'Remove from Kite…', click: () => e.confirmRemove(id) },
+      { type: 'separator' },
+      { label: 'Manage extensions', click: () => this.b.newTab('kite://extensions') },
+    ]
+    this.popup(this.build(items), x, y)
+  }
+
+  // The Extensions (puzzle) button: every extension, pinned or not.
+  extensions(x, y, anchor) {
+    const e = this.ctx.extensions
+    const list = e.list().sort((a, z) => z.enabled - a.enabled || a.name.localeCompare(z.name))
+    const items = list.map((ext) => ({
+      label: ext.name + (ext.enabled ? '' : ' (off)'),
+      submenu: [
+        ext.enabled ? { label: 'Open', click: () => this.b.emit('ext-activate', { id: ext.id, anchor }) } : null,
+        ext.enabled ? { label: ext.pinned ? 'Unpin from toolbar' : 'Pin to toolbar', click: () => e.setPinned(ext.id, !ext.pinned) } : null,
+        { label: ext.enabled ? 'Turn off' : 'Turn on', click: () => e.toggle(ext.id) },
+        (() => {
+          const o = ext.enabled ? e.optionsURL(ext.id) : null
+          return o ? { label: 'Options', click: () => this.b.newTab(o) } : null
+        })(),
+        { type: 'separator' },
+        { label: 'Remove from Kite…', click: () => e.confirmRemove(ext.id) },
+      ].filter(Boolean),
+    }))
+    if (!items.length) items.push({ label: 'No extensions yet', enabled: false })
+    items.push({ type: 'separator' }, { label: 'Get extensions', click: () => this.b.newTab('https://chromewebstore.google.com/category/extensions') }, { label: 'Manage extensions', click: () => this.b.newTab('kite://extensions') })
+    this.popup(this.build(items.map((i) => (i.submenu ? { ...i, submenu: this.build(i.submenu) } : i))), x, y)
+  }
+
   app(x, y) {
     const run = (a) => () => this.ctx.actions.run(a)
     const s = this.ctx.settings.data

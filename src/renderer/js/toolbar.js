@@ -15,6 +15,86 @@ const BUTTONS = {
   menu: { icon: 'dots', title: 'Menu' },
 }
 
+// ---------- extensions ----------
+// Pinned extensions sit on the toolbar; the rest (and turned-off ones) live
+// in the Extensions menu. Right-click any of them for pin / off / remove.
+let extList = []
+let extEls = null
+const partition = () => `persist:kite-${S.profile}`
+
+function extensionsArea() {
+  const wrap = h(`<div class="ext-area"></div>`)
+  const list = document.createElement('browser-action-list')
+  list.setAttribute('partition', partition())
+  list.setAttribute('alignment', 'bottom left')
+  const btn = h(`<button class="icon-btn tb-btn ext-btn" title="Extensions">${icon('blocks')}</button>`)
+  btn.onclick = () => {
+    const r = btn.getBoundingClientRect()
+    api.call('menu.extensions', r.left, r.bottom + 4, { x: r.left, y: r.top, width: r.width, height: r.height })
+  }
+  wrap.append(list, btn)
+  extEls = { list, btn }
+  initExtensions()
+  applyPins()
+  // the list fills in asynchronously; hide unpinned ones as they appear
+  setTimeout(applyPins, 300)
+  return wrap
+}
+
+function applyPins() {
+  if (!extEls) return
+  const unpinned = new Set(S.settings.unpinnedExtensions || [])
+  const root = extEls.list.shadowRoot
+  if (root) {
+    let st = root.querySelector('style[data-kite-pins]')
+    if (!st) {
+      st = document.createElement('style')
+      st.dataset.kitePins = ''
+      root.appendChild(st)
+    }
+    const ids = [...unpinned].filter((id) => /^[a-p]{32}$/.test(id))
+    st.textContent = ids.length ? ids.map((id) => `#${id}`).join(', ') + ' { display: none !important; }' : ''
+  }
+  // the Extensions button shows once something is installed
+  extEls.btn.style.display = extList.length ? '' : 'none'
+}
+
+export function setExtensions(list) {
+  extList = list || []
+  applyPins()
+}
+// set up once, the first time the toolbar shows extensions (not at module
+// load: main.js, which provides api, imports this file)
+let extReady = false
+function initExtensions() {
+  if (extReady) return
+  extReady = true
+  api.call('extensions.list').then(setExtensions).catch(() => {})
+  api.on('extensions', setExtensions)
+
+  // Kite's own right-click menu for extension buttons (instead of the
+  // extension library's, which has no pin / turn off / remove)
+  addEventListener(
+    'contextmenu',
+    (e) => {
+      const btn = e.composedPath().find((n) => n.classList?.contains('action') && n.getRootNode()?.host?.localName === 'browser-action-list')
+      if (!btn) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      api.call('menu.extension', btn.id, e.clientX, e.clientY)
+    },
+    true
+  )
+
+  // "Open" from the Extensions menu: show its popup under the menu button
+  api.on('ext-activate', ({ id, anchor }) => {
+    const btn = extEls?.list.shadowRoot?.getElementById(id)
+    const r = anchor || extEls?.btn.getBoundingClientRect()
+    window.browserAction?.activate(partition(), { eventType: 'click', extensionId: id, tabId: btn?.tab ?? -1, alignment: 'bottom left', anchorRect: { x: r.x, y: r.y, width: r.width, height: r.height } })
+  })
+  api.on('settings', () => setTimeout(applyPins))
+}
+
 let addrInput = null
 let editing = false
 
@@ -28,12 +108,8 @@ export function renderToolbar() {
   for (const item of S.settings.toolbar) {
     if (!item.visible) continue
     if (item.id === 'address') tb.appendChild(addressBar())
-    else if (item.id === 'extensions') {
-      const list = document.createElement('browser-action-list')
-      list.setAttribute('partition', `persist:kite-${S.profile}`)
-      list.setAttribute('alignment', 'bottom left')
-      tb.appendChild(list)
-    } else if (BUTTONS[item.id]) {
+    else if (item.id === 'extensions') tb.appendChild(extensionsArea())
+    else if (BUTTONS[item.id]) {
       const b = BUTTONS[item.id]
       const el = h(`<button class="icon-btn tb-btn" data-tb="${item.id}" title="${b.title}">${icon(b.icon)}</button>`)
       el.addEventListener('click', (e) => {

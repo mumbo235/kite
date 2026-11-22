@@ -1812,3 +1812,8 @@ body.measuring #panel {
 .bm-icons .bm-chip {
   padding: 0 6px;
 }
+.ext-area {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}

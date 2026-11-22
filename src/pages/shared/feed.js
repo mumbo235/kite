@@ -36,8 +36,18 @@ const cfg = () => {
 export function setupFeed(getSettings, saveNewtab) {
   getS = getSettings
   saveNt = saveNewtab
-  $('#feed-hint').innerHTML = `<span>News</span>${icon('chevronDown')}`
-  $('#feed-hint').onclick = () => $('#feed').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // News on: the hint scrolls down to it. News off: the hint turns it on.
+  $('#feed-hint').onclick = async () => {
+    if (!cfg().on) {
+      await setOn(true)
+      requestAnimationFrame(() => $('#feed').scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    } else $('#feed').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  $('#feed-off').innerHTML = `${icon('x')}<span>News off</span>`
+  $('#feed-off').onclick = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => setOn(false), 250)
+  }
   $('#feed-topics').onclick = (e) => {
     const b = e.target.closest('[data-topic]')
     if (!b) return
@@ -68,10 +78,18 @@ export function setupFeed(getSettings, saveNewtab) {
   sentinel.observe($('#feed-more'))
 }
 
+function setOn(on) {
+  return saveNt({ showNews: on })
+}
+
 export function renderFeed() {
   const c = cfg()
   $('#feed').hidden = !c.on
-  $('#feed-hint').hidden = !c.on
+  const hint = $('#feed-hint')
+  hint.classList.toggle('off', !c.on)
+  hint.title = c.on ? 'Scroll down for the news' : 'Turn the news feed on'
+  hint.innerHTML = c.on ? `<span>News</span>${icon('chevronDown')}` : `<span>Show news</span>`
+  hint.hidden = false
   document.body.classList.toggle('has-feed', c.on)
   if (!c.on) return
   const topics = [...TOPICS]

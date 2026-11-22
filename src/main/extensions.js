@@ -86,6 +86,8 @@ class Extensions {
         exts.removeExtension(id)
       }
     }
+    // a turned-off extension is unloaded, so remember where it lives
+    for (const [id, p] of Object.entries(this.ctx.settings.data.disabledExtensionPaths || {})) this.disabledPaths[id] ||= p
     exts.on?.('extension-loaded', () => this.emit())
     exts.on?.('extension-unloaded', () => this.emit())
   }
@@ -126,7 +128,10 @@ class Extensions {
       enabled: true,
       unpacked: (this.ctx.settings.data.unpackedExtensions || []).includes(e.path),
     }))
-    const disabled = (this.ctx.settings.data.disabledExtensions || []).map((id) => ({ id, name: id, version: '', description: 'Disabled', path: this.disabledPaths[id], enabled: false }))
+    const names = this.ctx.settings.data.extensionNames || {}
+    const unpinned = new Set(this.ctx.settings.data.unpinnedExtensions || [])
+    for (const e of loaded) e.pinned = !unpinned.has(e.id)
+    const disabled = (this.ctx.settings.data.disabledExtensions || []).map((id) => ({ id, name: names[id] || id, version: '', description: 'Turned off', path: this.disabledPaths[id], enabled: false, pinned: !unpinned.has(id) }))
     return [...loaded, ...disabled.filter((d) => !loaded.find((l) => l.id === d.id))]
   }
 
@@ -134,6 +139,8 @@ class Extensions {
     const exts = this.session.extensions || this.session
     const s = this.ctx.settings.data
     const disabled = new Set(s.disabledExtensions)
+    const names = { ...(s.extensionNames || {}) }
+    const paths = { ...(s.disabledExtensionPaths || {}) }
     if (disabled.has(id)) {
       disabled.delete(id)
       const p = this.disabledPaths[id]
@@ -142,11 +149,13 @@ class Extensions {
       const ext = exts.getExtension(id)
       if (ext) {
         this.disabledPaths[id] = ext.path
+        names[id] = ext.name
+        paths[id] = ext.path
         exts.removeExtension(id)
       }
       disabled.add(id)
     }
-    this.ctx.setSettings({ disabledExtensions: [...disabled] })
+    this.ctx.setSettings({ disabledExtensions: [...disabled], extensionNames: names, disabledExtensionPaths: paths })
     this.emit()
   }
 
@@ -164,8 +173,62 @@ class Extensions {
         if (ext) exts.removeExtension(id)
       }
     }
-    this.ctx.setSettings({ disabledExtensions: (this.ctx.settings.data.disabledExtensions || []).filter((d) => d !== id) })
+    const s = this.ctx.settings.data
+    const without = (o) => Object.fromEntries(Object.entries(o || {}).filter(([k]) => k !== id))
+    this.ctx.setSettings({
+      disabledExtensions: (s.disabledExtensions || []).filter((d) => d !== id),
+      unpinnedExtensions: (s.unpinnedExtensions || []).filter((d) => d !== id),
+      extensionNames: without(s.extensionNames),
+      disabledExtensionPaths: without(s.disabledExtensionPaths),
+    })
     this.emit()
+  }
+
+  // Show on the toolbar, or keep it in the Extensions (puzzle) menu
+  setPinned(id, pinned) {
+    const list = new Set(this.ctx.settings.data.unpinnedExtensions || [])
+    if (pinned) list.delete(id)
+    else list.add(id)
+    this.ctx.setSettings({ unpinnedExtensions: [...list] })
+    this.emit()
+  }
+
+  // Ask before removing (it deletes the extension and its data)
+  async confirmRemove(id) {
+    const ext = this.list().find((e) => e.id === id)
+    if (!ext) return
+    const r = await dialog.showMessageBox(this.ctx.browser.win, {
+      type: 'question',
+      buttons: ['Remove', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Remove extension',
+      message: `Remove “${ext.name}” from Kite?`,
+      detail: 'Its settings and data are deleted too. You can add it again from the Chrome Web Store.',
+    })
+    if (r.response === 0) await this.remove(id)
+  }
+
+  // Items the extension added to its own button's menu (chrome.contextMenus)
+  ownMenuItems(id) {
+    try {
+      return this.api?.ctx?.store?.buildMenuItems?.(id, 'browser_action') || []
+    } catch {
+      return []
+    }
+  }
+
+  optionsURL(id) {
+    const exts = this.session.extensions || this.session
+    const ext = exts.getExtension(id)
+    const page = ext?.manifest?.options_page || ext?.manifest?.options_ui?.page
+    return page ? `${ext.url.replace(/\/$/, '')}/${page.replace(/^\//, '')}` : null
+  }
+
+  homepage(id) {
+    const exts = this.session.extensions || this.session
+    const ext = exts.getExtension(id)
+    return ext?.manifest?.homepage_url || `https://chromewebstore.google.com/detail/${id}`
   }
 
   async loadUnpacked() {

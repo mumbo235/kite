@@ -124,6 +124,9 @@ function registerApi(ctx) {
     'menu.app': (x, y) => ctx.menus.app(x, y),
     'menu.bookmarks': (list, x, y) => ctx.menus.bookmarks(list || [], x, y),
     'menu.bookmark': (id, x, y) => ctx.menus.bookmark(id, x, y),
+    'menu.extension': (id, x, y) => ctx.menus.extension(id, x, y),
+    'menu.extensions': (x, y, anchor) => ctx.menus.extensions(x, y, anchor),
+    'extensions.setPinned': (id, pinned) => ctx.extensions.setPinned(id, pinned),
 
     // window
     'window.minimize': () => b().win.minimize(),

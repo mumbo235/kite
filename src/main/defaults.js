@@ -178,6 +178,8 @@ const SETTINGS_DEFAULTS = {
 
   // Extensions
   disabledExtensions: [],
+  unpinnedExtensions: [], // extensions kept in the Extensions menu instead of on the toolbar
+  extensionNames: {}, // names of turned-off extensions, for menus
   unpackedExtensions: [],
 }
 

@@ -1178,3 +1178,37 @@ body:not(.has-bg) .feed-empty {
   transform: translateY(8px);
   pointer-events: none;
 }
+
+/* news on/off */
+.feed-hint.off {
+  opacity: 0.45;
+  animation: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 12.5px;
+}
+.feed-hint.off:hover {
+  opacity: 0.95;
+}
+.feed-off {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--text);
+  font-size: 13px;
+  backdrop-filter: blur(10px);
+}
+.feed-off:hover {
+  background: var(--surface);
+}
+.feed-off .icon {
+  width: 14px;
+  height: 14px;
+}

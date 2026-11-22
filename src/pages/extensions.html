@@ -38,7 +38,7 @@
         $('#grid').innerHTML = list.length ? list.map((e, i) => `<div class="card ext ${e.enabled ? '' : 'off'}" style="animation-delay:${i * 30}ms" data-id="${esc(e.id)}">
           <div class="head"><img src="crx://extension-icon/${esc(e.id)}/64/2" alt=""><div style="flex:1;min-width:0"><div class="name">${esc(e.name)} <span class="muted" style="font-weight:400;font-size:12px">${esc(e.version)}</span></div><div class="desc">${esc(e.description)}</div></div>
           <input type="checkbox" class="switch" data-toggle ${e.enabled ? 'checked' : ''} title="Enabled"></div>
-          <div class="foot"><span class="id">${esc(e.id)}${e.unpacked ? ' · unpacked' : ''}</span><button class="btn danger" data-remove>Remove</button></div></div>`).join('')
+          <div class="foot"><span class="id">${esc(e.id)}${e.unpacked ? ' · unpacked' : ''}</span>${e.enabled ? `<button class="btn" data-pin>${e.pinned ? 'Unpin from toolbar' : 'Pin to toolbar'}</button>` : ''}<button class="btn danger" data-remove>Remove</button></div></div>`).join('')
           : '<div class="empty">No extensions yet. Try uBlock Origin Lite, Dark Reader or Bitwarden from the Web Store.</div>'
         for (const img of document.querySelectorAll('.ext img')) img.onerror = () => (img.style.visibility = 'hidden')
       }
@@ -46,6 +46,7 @@
         const card = e.target.closest('[data-id]')
         if (!card) return
         if (e.target.closest('[data-remove]') && confirm('Remove this extension?')) { await api.call('extensions.remove', card.dataset.id); render() }
+        if (e.target.closest('[data-pin]')) { const ext = (await api.call('extensions.list')).find((x) => x.id === card.dataset.id); await api.call('extensions.setPinned', card.dataset.id, !ext?.pinned); render() }
       }
       $('#grid').onchange = async (e) => {
         const card = e.target.closest('[data-id]')
