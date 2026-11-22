@@ -23,6 +23,9 @@ window.popup.onRender(({ html, vars, fresh }) => {
 
 list.addEventListener('mousedown', (e) => {
   e.preventDefault()
+  // buttons with an action (downloads dropdown) win over the row they're in
+  const act = e.target.closest('[data-act]')
+  if (act) return window.popup.pick(act.dataset.act, false)
   const row = e.target.closest('[data-i]')
   if (row) window.popup.pick(+row.dataset.i, e.ctrlKey || e.button === 1)
 })

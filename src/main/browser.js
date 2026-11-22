@@ -111,7 +111,10 @@ class Browser {
     fit()
     this.win.on('resize', fit)
     this.win.on('resize', () => this.hidePopup())
-    this.win.on('blur', () => this.hidePopup())
+    this.win.on('blur', () => {
+      this.dismissDropdown()
+      this.hidePopup()
+    })
     this.win.on('maximize', () => this.emit('window', this.windowState()))
     this.win.on('unmaximize', () => this.emit('window', this.windowState()))
     this.win.on('enter-full-screen', () => this.emit('window', this.windowState()))
@@ -316,6 +319,7 @@ class Browser {
       }
     })
     wc.on('focus', () => {
+      this.dismissDropdown()
       if (tab.holdAddressFocusUntil > Date.now() && tab.id === this.activeId && !this.overlay) this.focusAddress()
     })
     wc.on('dom-ready', () => {
@@ -635,6 +639,7 @@ class Browser {
         return { action: 'deny' }
       })
       wc.on('context-menu', (_e, params) => this.ctx.menus.panel(view, params))
+      wc.on('focus', () => this.dismissDropdown())
       wc.loadURL(url).catch(() => {})
       this.panels.set(key, view)
     }
@@ -729,7 +734,8 @@ class Browser {
     return this.popup
   }
 
-  async showPopup(rect, html, vars, fresh) {
+  async showPopup(rect, html, vars, fresh, mode = 'suggest') {
+    this.popupMode = mode
     const p = this.ensurePopup()
     await this.popupReady
     this.popupRect = { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), maxHeight: Math.round(rect.maxHeight || 500) }
@@ -750,6 +756,14 @@ class Browser {
   hidePopup() {
     this.popupRect = null
     this.popup?.setVisible(false)
+  }
+
+  // The downloads dropdown closes when you click into a page or panel.
+  dismissDropdown() {
+    if (this.popupRect && this.popupMode === 'downloads') {
+      this.hidePopup()
+      this.emit('popup-closed')
+    }
   }
 
   setOverlay(on) {

@@ -73,7 +73,7 @@ function registerApi(ctx) {
     'layout.lift': (on) => b().lift(!!on),
     'layout.animate': (args) => b().animateContent(args),
     'layout.viewport': () => b().viewport(),
-    'popup.show': (rect, html, vars, fresh) => b().showPopup(rect, html, vars, fresh),
+    'popup.show': (rect, html, vars, fresh, mode) => b().showPopup(rect, html, vars, fresh, mode),
     'popup.hide': () => b().hidePopup(),
     'layout.thaw': () => b().thaw(),
 

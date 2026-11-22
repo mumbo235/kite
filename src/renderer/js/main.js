@@ -2,7 +2,7 @@
 import { applyTheme, onSystemThemeChange } from './theme.js'
 import { icon } from './icons.js'
 import { renderTabs, fixBrokenFavicons } from './tabs.js'
-import { renderToolbar, focusAddress, updateToolbarState } from './toolbar.js'
+import { renderToolbar, focusAddress, updateToolbarState, refreshDownloadsDropdown } from './toolbar.js'
 import { renderSidebar, setupResizers, setupAutoHide } from './sidebar.js'
 import { openPalette, toast, prompt } from './overlay.js'
 import { renderPanel, openTool, closeTool } from './panels.js'
@@ -294,6 +294,7 @@ api.on('toast', (t) => toast(t.text, t.action))
 api.on('downloads', (d) => {
   S.downloads = d
   updateToolbarState()
+  refreshDownloadsDropdown()
   if (S.tool === 'downloads') renderPanel()
 })
 api.on('data:bookmarks', (b) => {

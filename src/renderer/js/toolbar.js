@@ -41,6 +41,7 @@ export function renderToolbar() {
           const r = el.getBoundingClientRect()
           api.call('menu.app', r.right - 4, r.bottom + 4)
         } else if (item.id === 'shield') shieldMenu(el)
+        else if (item.id === 'downloads') toggleDownloads(el)
         else if (item.id === 'reload' && activeTab()?.loading) api.call('nav.stop')
         else api.call('actions.run', b.action)
       })
@@ -344,6 +345,7 @@ function cssVars() {
 function drawSuggestions(fresh) {
   const addr = $('.address')
   if (!addr) return
+  dlOpen = false
   open = true
   const r = addr.getBoundingClientRect()
   const tagFor = { bookmark: 'Bookmark', history: 'History', search: '', tab: 'Switch to tab', go: '' }
@@ -368,6 +370,7 @@ function drawSuggestions(fresh) {
 }
 
 window.kite.on('popup-pick', ({ index, newTab }) => {
+  if (typeof index === 'string') return downloadAction(index)
   const s = suggestions[index]
   if (!s) return
   if (s.type === 'go') go(s.url, newTab)
@@ -396,3 +399,121 @@ function closeSuggestions() {
     api.call('popup.hide')
   }
 }
+
+// ---------- downloads dropdown (drawn in the floating popup layer) ----------
+let dlOpen = false
+let dlAnchor = null
+
+const fmtSize = (n) => (!n ? '' : n > 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB')
+
+const DL_CSS = `<style>
+  .dl-head { display: flex; align-items: center; gap: 8px; padding: 6px 8px 8px; font-size: 13px; }
+  .dl-head b { flex: 1; font-weight: 600; }
+  .dl-link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; padding: 4px 6px; border-radius: 6px; }
+  .dl-link:hover { background: var(--accent-soft); }
+  .dl-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius-sm); }
+  .dl-row:hover { background: var(--surface-2); }
+  .dl-row.done { cursor: default; }
+  .dl-ic { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--surface-2); color: var(--muted); }
+  .dl-row:hover .dl-ic { background: var(--surface-3); }
+  .dl-main { flex: 1; min-width: 0; }
+  .dl-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .dl-sub { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .dl-sub.bad { color: var(--danger, #dc2626); }
+  .dl-bar { height: 3px; margin-top: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+  .dl-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 200ms linear; }
+  .dl-acts { display: flex; gap: 2px; }
+  .dl-acts button { width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); display: grid; place-items: center; }
+  .dl-acts button:hover { background: var(--surface-3); color: var(--text); }
+  .dl-acts .icon { width: 15px; height: 15px; }
+  .dl-empty { padding: 22px 8px 18px; text-align: center; color: var(--muted); font-size: 13px; }
+  .dl-foot { display: flex; padding: 6px 2px 2px; margin-top: 4px; border-top: 1px solid var(--border); }
+</style>`
+
+function downloadsHTML() {
+  const list = S.downloads.slice(0, 6)
+  const rows = list
+    .map((d) => {
+      const live = d.state === 'progressing' || d.state === 'paused'
+      const pct = d.total ? Math.round((d.received / d.total) * 100) : 0
+      let sub = ''
+      let bad = false
+      if (d.state === 'progressing') sub = `${fmtSize(d.received)}${d.total ? ' of ' + fmtSize(d.total) : ''}`
+      else if (d.state === 'paused') sub = `Paused · ${fmtSize(d.received)}${d.total ? ' of ' + fmtSize(d.total) : ''}`
+      else if (d.state === 'completed') sub = fmtSize(d.received) || 'Done'
+      else {
+        sub = d.state === 'cancelled' ? 'Cancelled' : 'Failed'
+        bad = true
+      }
+      const acts = live
+        ? `<button data-act="pause:${d.id}" title="${d.state === 'paused' ? 'Resume' : 'Pause'}">${icon(d.state === 'paused' ? 'play' : 'pause')}</button><button data-act="cancel:${d.id}" title="Cancel">${icon('x')}</button>`
+        : d.state === 'completed'
+          ? `<button data-act="show:${d.id}" title="Show in folder">${icon('folder')}</button>`
+          : ''
+      return `<div class="dl-row ${d.state === 'completed' ? 'done' : ''}" ${d.state === 'completed' ? `data-act="open:${d.id}" title="Open ${esc(d.name)}"` : ''}>
+        <span class="dl-ic">${icon('file')}</span>
+        <div class="dl-main"><div class="dl-name">${esc(d.name)}</div><div class="dl-sub ${bad ? 'bad' : ''}">${esc(sub)}</div>${live ? `<div class="dl-bar"><i style="width:${pct}%"></i></div>` : ''}</div>
+        <div class="dl-acts">${acts}</div></div>`
+    })
+    .join('')
+  return `${DL_CSS}<div class="dl-head"><b>Downloads</b>${S.downloads.length ? '<button class="dl-link" data-act="all">See all</button>' : ''}</div>
+    ${rows || '<div class="dl-empty">No downloads yet</div>'}
+    <div class="dl-foot"><button class="dl-link" data-act="folder">Open downloads folder</button></div>`
+}
+
+function drawDownloads(fresh) {
+  if (!dlAnchor?.isConnected) dlAnchor = $('#toolbar [data-tb="downloads"]')
+  if (!dlAnchor) return
+  const r = dlAnchor.getBoundingClientRect()
+  const pad = 14
+  const width = 360
+  const x = Math.max(0, Math.round(r.right + 4 - width - pad))
+  api.call('popup.show', { x, y: r.bottom + 2, width: width + pad * 2, maxHeight: Math.round(innerHeight * 0.8) }, downloadsHTML(), cssVars(), fresh, 'downloads')
+}
+
+function toggleDownloads(btn) {
+  if (dlOpen) return closeDownloads()
+  if (open) closeSuggestions()
+  dlAnchor = btn
+  dlOpen = true
+  btn.classList.add('on')
+  drawDownloads(true)
+}
+
+export function closeDownloads() {
+  if (!dlOpen) return
+  dlOpen = false
+  dlAnchor?.classList.remove('on')
+  api.call('popup.hide')
+}
+
+// live progress while it's open
+export function refreshDownloadsDropdown() {
+  if (dlOpen) drawDownloads(false)
+}
+
+function downloadAction(act) {
+  const [what, id] = act.split(':')
+  if (what === 'all') {
+    closeDownloads()
+    return api.call('actions.run', 'openDownloads')
+  }
+  if (what === 'folder') {
+    closeDownloads()
+    return api.call('downloads.folder')
+  }
+  if (what === 'open') closeDownloads()
+  api.call('downloads.' + what, +id)
+}
+
+window.kite.on('popup-closed', () => {
+  dlOpen = false
+  dlAnchor?.classList.remove('on')
+})
+// clicking anywhere else in the browser UI, or Escape, closes it
+document.addEventListener('mousedown', (e) => {
+  if (dlOpen && !e.target.closest('[data-tb="downloads"]')) closeDownloads()
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && dlOpen) closeDownloads()
+})
