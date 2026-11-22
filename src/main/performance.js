@@ -127,7 +127,11 @@ class Performance {
 
     // CPU limit: lower priority of background tabs; freeze the busiest if needed
     const limited = cfg.cpuLimit < 100
-    const nice = limited ? Math.round(((100 - cfg.cpuLimit) / 90) * 15) : 0
+    // Lower background priority only where it can be undone: on Linux and
+    // macOS a normal program can't raise a process's priority back, so a tab
+    // would stay slow even after you switch to it.
+    const canRestore = process.platform === 'win32'
+    const nice = limited && canRestore ? Math.round(((100 - cfg.cpuLimit) / 90) * 15) : 0
     const activePid = b.active()?.wc && !b.active().wc.isDestroyed() ? b.active().wc.getOSProcessId() : null
     for (const [, info] of s.tabs) {
       const want = info.pid === activePid ? 0 : nice
@@ -153,6 +157,19 @@ class Performance {
     }
     // limit lifted: undo only the freezes the limiter made (not manual ones)
     if (!limited) for (const t of b.tabs.values()) if (t.frozen && t.autoFrozen) this.unfreeze(t)
+  }
+
+  // A tab you switch to gets full CPU priority right away (instead of on the
+  // next once-a-second check), so it never feels sluggish.
+  boost(tab) {
+    try {
+      if (!tab?.wc || tab.wc.isDestroyed()) return
+      const pid = tab.wc.getOSProcessId()
+      if ((this.niced.get(pid) || 0) !== 0) {
+        os.setPriority(pid, 0)
+        this.niced.set(pid, 0)
+      }
+    } catch {}
   }
 
   note(text) {

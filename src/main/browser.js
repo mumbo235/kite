@@ -394,6 +394,7 @@ class Browser {
     tab.lastActive = Date.now()
     if (tab.frozen) this.ctx.perf?.unfreeze(tab)
     this.ensureView(tab)
+    this.ctx.perf?.boost(tab)
     this.ctx.extensions?.selectTab(tab.wc)
     this.layout()
     if (!this.overlay) {

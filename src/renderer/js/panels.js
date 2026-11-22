@@ -199,7 +199,7 @@ const RENDER = {
       </div>
       <div class="seg pf-presets" id="pf-presets">${Object.entries(PRESETS).map(([id, p]) => `<button data-p="${id}">${p.name}</button>`).join('')}</div>
       <div class="pf-slider"><div class="pf-sl-head"><span>RAM limit</span><b id="pf-ram-v"></b></div><input type="range" id="pf-ram" min="0" max="${perfSteps.length}" step="1" value="${ramIdx}"><div class="pf-hint">Over the limit, the tabs you used least recently go to sleep. They reload when you open them.</div></div>
-      <div class="pf-slider"><div class="pf-sl-head"><span>CPU limit</span><b id="pf-cpu-v"></b></div><input type="range" id="pf-cpu-r" min="10" max="100" step="5" value="${cfg.cpuLimit}"><div class="pf-hint">Background tabs get lower priority. Over the limit, the busiest background tab is frozen (paused, nothing lost).</div></div>
+      <div class="pf-slider"><div class="pf-sl-head"><span>CPU limit</span><b id="pf-cpu-v"></b></div><input type="range" id="pf-cpu-r" min="10" max="100" step="5" value="${cfg.cpuLimit}"><div class="pf-hint">Over the limit, the busiest background tab is frozen (paused, nothing lost) until you switch back to it.</div></div>
       <div class="pf-slider"><div class="pf-sl-head"><span>Sleep inactive tabs after</span><b id="pf-sleep-v"></b></div><input type="range" id="pf-sleep" min="0" max="${SLEEP_STEPS.length - 1}" step="1" value="${sleepIdx}"></div>
       <div class="pf-action" id="pf-action"></div>
       <div class="p-group">Usage</div>

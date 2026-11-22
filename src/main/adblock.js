@@ -56,7 +56,7 @@ class AdBlock {
       }
       const cosmetic = this.blocker.onInjectCosmeticFilters
       this.blocker.onInjectCosmeticFilters = (event, url, msg) => {
-        if (this.allowed(url)) return Promise.resolve()
+        if (this.allowed(url) || exempt(url, url)) return Promise.resolve()
         return cosmetic(event, url, msg)
       }
       this.blocker.on('request-blocked', (req) => {

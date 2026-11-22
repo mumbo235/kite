@@ -496,7 +496,7 @@ function performance() {
     group(
       'Limits',
       row('RAM limit', 'Over the limit, the tabs you used least recently go to sleep. They reload when you open them.', select('perf.ramLimitMB', rams)) +
-        row('CPU limit', 'Background tabs get lower priority; over the limit the busiest one is frozen (paused, nothing lost).', range('perf.cpuLimit', 10, 100, 5, '%')) +
+        row('CPU limit', 'Over the limit, the busiest background tab is frozen (paused, nothing lost) until you switch back to it.', range('perf.cpuLimit', 10, 100, 5, '%')) +
         row('Sleep inactive tabs after', '', select('perf.sleepAfterMin', mins([0, 5, 10, 15, 30, 60, 120])))
     ) +
     group(
